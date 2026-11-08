@@ -1,55 +1,73 @@
 import type { ExpressionSpecification, Map as MapboxMap } from 'mapbox-gl'
 
-const WALL = { low: '#b4c6ea', tall: '#9db3e0' }
-const GLASS = { low: '#e3efff', tall: '#c9dcff' }
-const ROOF = '#d3def2'
-const EDGE = '#4c6199'
+/**
+ * UB-style buildings: red-brown brick walls with dark window bands, and teal, grey or
+ * dark roofs. Three looks by height so neighbouring buildings differ.
+ * (Mapbox buildings have no names, so the look is chosen by height only.)
+ */
+const LOOKS = [
+  // low, wide buildings: light brick, teal glass, teal roof
+  { name: 'low', maxH: 12, brick: '#c0694f', mortar: '#9c4d39', glass: '#3c8c9a', roof: '#2fa08f' },
+  // mid-rise: classic red-brown brick, grey roof
+  { name: 'mid', maxH: 25, brick: '#a9503c', mortar: '#853b2b', glass: '#2f6f86', roof: '#b9b3aa' },
+  // towers: dark brown brick, narrow dark windows, dark roof
+  { name: 'tall', maxH: Infinity, brick: '#80432f', mortar: '#5f2f21', glass: '#26485f', roof: '#5d4a44' },
+] as const
 
-/** Draws one tile of wall: floors as horizontal bands with rows of windows. */
-function wallImage(wall: string, glass: string): { width: number; height: number; data: Uint8ClampedArray } {
+const EDGE = '#4a2a20'
+
+/** One tile of wall: staggered brick courses plus a dark window band with blinds. */
+function wallImage(look: (typeof LOOKS)[number]): { width: number; height: number; data: Uint8ClampedArray } {
   const size = 64
   const c = document.createElement('canvas')
   c.width = c.height = size
   const g = c.getContext('2d')!
-  g.fillStyle = wall
+
+  // brick
+  g.fillStyle = look.brick
   g.fillRect(0, 0, size, size)
-  // floor line at the bottom of the tile
-  g.fillStyle = 'rgba(20,35,80,0.35)'
-  g.fillRect(0, size - 4, size, 4)
-  g.fillStyle = 'rgba(255,255,255,0.25)'
-  g.fillRect(0, 0, size, 3)
-  // two windows per floor
-  for (const x of [8, 36]) {
-    g.fillStyle = 'rgba(20,35,80,0.55)'
-    g.fillRect(x - 2, 10, 24, 36)
-    g.fillStyle = glass
-    g.fillRect(x, 12, 20, 32)
-    g.fillStyle = 'rgba(255,255,255,0.6)'
-    g.fillRect(x, 12, 20, 6)
-    g.fillStyle = 'rgba(20,35,80,0.4)'
-    g.fillRect(x + 9, 12, 2, 32)
+  g.fillStyle = look.mortar
+  for (let row = 0; row < 8; row++) {
+    g.fillRect(0, row * 8, size, 1)
+    const off = row % 2 ? 0 : 8
+    for (let x = off; x < size; x += 16) g.fillRect(x, row * 8, 1, 8)
   }
+
+  // window band (top half of the tile) with a frame, glass, blinds and a mullion
+  g.fillStyle = 'rgba(15,20,30,0.75)'
+  g.fillRect(0, 12, size, 30)
+  g.fillStyle = look.glass
+  g.fillRect(2, 15, size - 4, 24)
+  g.fillStyle = 'rgba(255,255,255,0.28)'
+  for (let y = 17; y < 38; y += 4) g.fillRect(2, y, size - 4, 1.5)
+  g.fillStyle = 'rgba(15,20,30,0.8)'
+  for (const x of [0, 21, 42, 62]) g.fillRect(x, 12, 2, 30)
+
+  // concrete floor ledge
+  g.fillStyle = '#d7cfc4'
+  g.fillRect(0, 44, size, 3)
+
   const img = g.getImageData(0, 0, size, size)
   return { width: size, height: size, data: img.data }
 }
 
-/**
- * Real-looking cartoon buildings: window walls, flat light roofs and dark footprint outlines.
- * Needs the 'composite' source of the Mapbox streets style.
- */
+/** Brick walls with window bands, coloured roofs and dark outlines. Needs the 'composite' source. */
 export function addBuildings(map: MapboxMap): void {
   if (map.getLayer('3d-buildings')) return
-
-  if (!map.hasImage('wall-low')) map.addImage('wall-low', wallImage(WALL.low, GLASS.low), { pixelRatio: 2 })
-  if (!map.hasImage('wall-tall')) map.addImage('wall-tall', wallImage(WALL.tall, GLASS.tall), { pixelRatio: 2 })
 
   const h: ExpressionSpecification = ['coalesce', ['get', 'height'], 12]
   const base: ExpressionSpecification = ['coalesce', ['get', 'min_height'], 0]
   const notUnderground: ExpressionSpecification = ['!=', ['get', 'underground'], 'true']
 
-  const wall = (id: string, image: string, filter: ExpressionSpecification) =>
+  let prev = 0
+  LOOKS.forEach((look, i) => {
+    const image = `wall-${look.name}`
+    if (!map.hasImage(image)) map.addImage(image, wallImage(look), { pixelRatio: 2 })
+    const filter: ExpressionSpecification =
+      look.maxH === Infinity ? ['all', notUnderground, ['>', h, prev]] : ['all', notUnderground, ['>', h, i === 0 ? -1 : prev], ['<=', h, look.maxH]]
+    prev = look.maxH
     map.addLayer({
-      id,
+      id: i === 0 ? '3d-buildings' : `3d-buildings-${look.name}`,
       source: 'composite',
       'source-layer': 'building',
       type: 'fill-extrusion',
@@ -63,10 +81,9 @@ export function addBuildings(map: MapboxMap): void {
         'fill-extrusion-vertical-gradient': true,
       },
     })
-  wall('3d-buildings', 'wall-low', ['all', notUnderground, ['<=', h, 25]])
-  wall('3d-buildings-tall', 'wall-tall', ['all', notUnderground, ['>', h, 25]])
+  })
 
-  // Flat light roof slab sitting on top of the walls.
+  // Roof slab on top of the walls, coloured by building height.
   map.addLayer({
     id: 'building-roofs',
     source: 'composite',
@@ -75,7 +92,7 @@ export function addBuildings(map: MapboxMap): void {
     minzoom: 15,
     filter: notUnderground,
     paint: {
-      'fill-extrusion-color': ROOF,
+      'fill-extrusion-color': ['step', h, LOOKS[0].roof, 12, LOOKS[1].roof, 25, LOOKS[2].roof],
       'fill-extrusion-base': h,
       'fill-extrusion-height': ['+', h, 0.6],
       'fill-extrusion-opacity': 1,
