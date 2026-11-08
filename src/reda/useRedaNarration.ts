@@ -18,7 +18,7 @@
  */
 import { useEffect, useRef } from 'react'
 import { fetchNarration, fetchPlaceInfo, getVoiceStatus, playClip, stopVoice, type Clip } from '../api'
-import { onGameEvent, type Emotion, type GameEvent } from './redaEvents'
+import { logSpeech, onGameEvent, talkedWithin, type Emotion, type GameEvent } from './redaEvents'
 import type { RedaControls } from './useRedaState'
 
 // The backend's stops.json and place-info.json use the game's own stop ids (capen, lockwood, …),
@@ -26,11 +26,15 @@ import type { RedaControls } from './useRedaState'
 
 /** Drop clips that were ready too late to still make sense. */
 const STALE_MS = 40_000
+/** After a live conversation, narration stays quiet this long so the two never run together. */
+const QUIET_AFTER_TALK_MS = 8_000
 
 interface QueueItem {
   clip: Promise<Clip | null>
   emotion: Emotion
   at: number
+  /** For the dev log. */
+  label: string
   /** Settles the promise returned to whoever emitted the event. */
   done: () => void
 }
@@ -77,11 +81,15 @@ export function useRedaNarration(reda: RedaControls, enabled = true) {
       const clip = await item.clip
       const r = redaRef.current
       if (cancelled || !clip) return
-      // Skip if it's too old, or the player is talking to Reda right now.
-      if (Date.now() - item.at > STALE_MS || r.interactionRef.current !== 'idle') {
+      // Skip if it's too old, or the player is (or just was) talking with Reda: a scripted
+      // line right before or after a live answer sounds like Reda answering from a script.
+      // The arrival line is exempt: the player has to hear it before the quiz.
+      if (Date.now() - item.at > STALE_MS || r.interactionRef.current !== 'idle' || (item.label !== 'destination-reached' && talkedWithin(QUIET_AFTER_TALK_MS))) {
+        logSpeech(`narration ${item.label} (skipped)`, clip.caption)
         URL.revokeObjectURL(clip.url)
         return
       }
+      logSpeech(`narration ${item.label}`, clip.caption)
       r.transition('speaking')
       r.react([{ emotion: item.emotion, ms: 60_000 }], 3)
       await playClip(clip)
@@ -116,7 +124,7 @@ export function useRedaNarration(reda: RedaControls, enabled = true) {
           queue.splice(0).forEach((old) => old.done())
           stopVoice()
         }
-        queue.push({ ...next, at: Date.now(), done })
+        queue.push({ ...next, at: Date.now(), label: e.type, done })
         void run()
       })
     })

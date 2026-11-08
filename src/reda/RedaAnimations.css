@@ -191,6 +191,20 @@
 }
 .reda-root[data-state='listening'] .reda-waves span { border-color: var(--reda-purple); }
 
+/* ---------- connecting (held, but Reda can't hear yet): calm blue, no waves ---------- */
+.reda-root[data-mic='connecting'] {
+  --reda-trim: #7fa6d6;
+  --reda-glow: var(--reda-ub);
+  --reda-glow-strength: 0.45;
+}
+.reda-root[data-mic='connecting'] .reda-waves span { animation: none; opacity: 0; }
+.reda-root[data-mic='connecting'] .reda-mic {
+  background: #5a6f8f;
+  box-shadow: 0 0 0 2px #0b1b33;
+  animation: reda-connecting 0.9s ease-in-out infinite;
+}
+@keyframes reda-connecting { 0%, 100% { opacity: 0.45; } 50% { opacity: 1; } }
+
 /* ---------- mic badge ---------- */
 .reda-mic {
   position: absolute;

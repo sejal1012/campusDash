@@ -10,6 +10,7 @@ import { useCallback, useEffect, useRef, useState, type RefObject } from 'react'
 import { Conversation } from '@elevenlabs/client'
 import { fetchGuideToken, isVoiceMuted, setVoiceMuted, stopVoice } from '../api'
 import type { RedaControls } from './useRedaState'
+import { logSpeech, markTalking } from './redaEvents'
 
 type Session = Awaited<ReturnType<typeof Conversation.startSession>>
 
@@ -33,6 +34,19 @@ const SESSION_IDLE_MS = 3 * 60_000
 const CHECKIN_GAP_MS = 60_000
 const ERROR_SHOW_MS = 3_400
 const ANSWER_LINGER_MS = 5_000
+/**
+ * The guide reports "listening" for a moment between chunks of a long answer. Only treat the
+ * answer as finished after this much quiet, so it isn't muted mid-sentence.
+ */
+const ANSWER_END_GRACE_MS = 1_500
+/**
+ * A new connection makes the guide say its configured greeting ("Hey, ask me anything…").
+ * It plays muted, and Reda only starts listening once it's over: if no greeting starts within
+ * GREETING_START_MS there isn't one; a quiet gap of GREETING_GAP_MS ends it; GREETING_MAX_MS caps it.
+ */
+const GREETING_START_MS = 2_500
+const GREETING_GAP_MS = 700
+const GREETING_MAX_MS = 12_000
 /** Peak mic level below this means the hold was silent. */
 const SILENCE_LEVEL = 0.03
 
@@ -42,7 +56,7 @@ const SILENCE_LEVEL = 0.03
  */
 export const REDA_PERSONA =
   "Your name is Reda. You are a friendly, playful floating robotic buffalo, the player's companion in Campus Dash, a game exploring UB's North Campus. " +
-  "In your first reply of this conversation, introduce yourself as Reda in a few words before answering. Always call yourself Reda. Keep answers short and upbeat, because they are spoken aloud."
+  "Answer the player's question directly; don't open with an introduction or greeting. If asked your name or who you are, say you're Reda. Keep answers short and upbeat, because they are spoken aloud."
 
 const ERRORS = {
   mic: 'I need your microphone to hear you. Allow it in your browser settings, then hold me again.',
@@ -64,6 +78,8 @@ interface Options {
 
 export function useVoiceInteraction(reda: RedaControls, { targetName, levelElRef }: Options) {
   const [bubble, setBubble] = useState<Bubble | null>(null)
+  /** True while held AND the connection is open, i.e. Reda can actually hear the player. */
+  const [micLive, setMicLive] = useState(false)
 
   const session = useRef<Session | null>(null)
   const connecting = useRef<Promise<Session | null> | null>(null)
@@ -77,6 +93,8 @@ export function useVoiceInteraction(reda: RedaControls, { targetName, levelElRef
   const wantsAnswer = useRef(false)
   /** The guide is speaking on its own (a check-in), not answering. */
   const checkingIn = useRef(false)
+  /** A new connection's greeting is still playing (muted); the player isn't heard yet. */
+  const greeting = useRef(false)
   const lastCheckIn = useRef(0)
   const audioClaimed = useRef<boolean | null>(null) // previous narrator mute setting while Reda owns the audio
   const raf = useRef(0)
@@ -170,9 +188,11 @@ export function useVoiceInteraction(reda: RedaControls, { targetName, levelElRef
     (kind: ErrorKind) => {
       const r = redaRef.current
       holding.current = false
+    setMicLive(false)
       wantsAnswer.current = false
       setGuideAudible(false)
       clearTimer('think')
+      clearTimer('answerEnd')
       try {
         session.current?.setMicMuted(true)
       } catch {
@@ -194,8 +214,32 @@ export function useVoiceInteraction(reda: RedaControls, { targetName, levelElRef
 
   // ---------- agent callbacks ----------
 
+  /** The greeting is over: from now on the player can be heard. */
+  const endGreeting = () => {
+    if (!greeting.current) return
+    greeting.current = false
+    clearTimer('greet')
+    clearTimer('greetMax')
+    const s = session.current
+    if (s && holding.current) {
+      s.setMicMuted(false)
+      setMicLive(true)
+      navigator.vibrate?.(30) // "go ahead, I'm listening"
+      startLevels('input')
+    }
+  }
+
   const onAgentSpeaking = () => {
     const r = redaRef.current
+    if (greeting.current) {
+      // The connection's greeting: stays silent, and Reda keeps waiting for it to finish.
+      clearTimer('greet')
+      setGuideAudible(false)
+      return
+    }
+    clearTimer('answerEnd')
+    // Same answer carrying on after a short pause: keep playing it.
+    if (r.interactionRef.current === 'speaking' && !holding.current) return
     if (holding.current) {
       setGuideAudible(false)
       return
@@ -213,6 +257,7 @@ export function useVoiceInteraction(reda: RedaControls, { targetName, levelElRef
     }
     clearTimer('think')
     clearTimer('linger')
+    markTalking()
     if (r.transition('speaking') || r.interactionRef.current === 'speaking') {
       claimAudio()
       r.react([{ emotion: 'happy', ms: 60_000 }], 3) // settles when speech ends
@@ -222,8 +267,19 @@ export function useVoiceInteraction(reda: RedaControls, { targetName, levelElRef
   }
 
   const onAgentListening = () => {
+    if (greeting.current) {
+      setTimer('greet', GREETING_GAP_MS, endGreeting)
+      return
+    }
+    if (redaRef.current.interactionRef.current !== 'speaking') return
+    // Might just be a pause between sentences: wait before calling the answer finished.
+    setTimer('answerEnd', ANSWER_END_GRACE_MS, finishAnswer)
+  }
+
+  const finishAnswer = () => {
     const r = redaRef.current
     if (r.interactionRef.current !== 'speaking') return
+    markTalking()
     const wasCheckIn = checkingIn.current
     checkingIn.current = false
     wantsAnswer.current = false
@@ -258,6 +314,11 @@ export function useVoiceInteraction(reda: RedaControls, { targetName, levelElRef
           onMessage: ({ message, role }: { message: string; role: string }) => {
             const text = message?.trim() ?? ''
             if (!text) return
+            if (role !== 'user' && greeting.current) {
+              logSpeech('greeting (muted)', text)
+              return
+            }
+            logSpeech(role === 'user' ? 'you said' : wantsAnswer.current ? 'live answer' : 'live (unprompted)', text)
             if (role === 'user') {
               heard.current = text
               setBubble((b) => (b && (b.kind === 'thinking' || b.kind === 'answer') ? { ...b, heard: text } : b))
@@ -271,6 +332,8 @@ export function useVoiceInteraction(reda: RedaControls, { targetName, levelElRef
           onModeChange: ({ mode }: { mode: 'speaking' | 'listening' }) => (mode === 'speaking' ? onAgentSpeaking() : onAgentListening()),
           onDisconnect: (details: { reason: string }) => {
             session.current = null
+            greeting.current = false
+            if (import.meta.env.DEV) console.info(`[Reda] connection closed (${details.reason})`)
             stopLevels()
             if (details.reason !== 'user' && redaRef.current.interactionRef.current !== 'idle') fail('lost')
           },
@@ -282,12 +345,15 @@ export function useVoiceInteraction(reda: RedaControls, { targetName, levelElRef
         const s = token.signedUrl
           ? await Conversation.startSession({ signedUrl: token.signedUrl, connectionType: 'websocket', ...callbacks })
           : await Conversation.startSession({ conversationToken: token.conversationToken!, connectionType: 'webrtc', ...callbacks })
-        s.setMicMuted(!holding.current)
-        s.setVolume({ volume: wantsAnswer.current ? 1 : 0 })
+        // Mic stays off and the guide silent until its greeting is over (see endGreeting).
+        s.setMicMuted(true)
+        s.setVolume({ volume: 0 })
         session.current = s
+        greeting.current = true
+        setTimer('greet', GREETING_START_MS, endGreeting)
+        setTimer('greetMax', GREETING_MAX_MS, endGreeting)
         s.sendContextualUpdate(REDA_PERSONA)
         if (targetRef.current) s.sendContextualUpdate(`The player is walking to ${targetRef.current}.`)
-        if (holding.current) startLevels('input')
         return s
       } catch (err) {
         console.warn('Reda could not start a voice session', err)
@@ -311,7 +377,8 @@ export function useVoiceInteraction(reda: RedaControls, { targetName, levelElRef
     peak.current = 0
     heard.current = ''
     answer.current = ''
-    ;['think', 'error', 'linger', 'hint', 'session'].forEach(clearTimer)
+    ;['think', 'error', 'linger', 'hint', 'session', 'answerEnd'].forEach(clearTimer)
+    markTalking()
     r.markActivity()
 
     // A new question (or interrupting an answer): mute the guide until this one is asked.
@@ -320,6 +387,7 @@ export function useVoiceInteraction(reda: RedaControls, { targetName, levelElRef
     setGuideAudible(false)
     if (!r.transition('listening')) {
       holding.current = false
+    setMicLive(false)
       return
     }
     claimAudio()
@@ -327,9 +395,12 @@ export function useVoiceInteraction(reda: RedaControls, { targetName, levelElRef
     setBubble({ kind: 'listening', text: 'Listening…' })
 
     const s = session.current
-    if (s) {
+    if (s && !greeting.current) {
       s.setMicMuted(false)
+      setMicLive(true)
       startLevels('input')
+    } else if (s) {
+      // Connected, but the greeting is still playing: endGreeting() opens the mic.
     } else {
       // Don't open a session (or ask for the mic) for a quick tap.
       setTimer('connect', TAP_MS * 0.6, () => {
@@ -342,6 +413,7 @@ export function useVoiceInteraction(reda: RedaControls, { targetName, levelElRef
     const r = redaRef.current
     if (!holding.current) return
     holding.current = false
+    setMicLive(false)
     clearTimer('connect')
     const held = performance.now() - pressAt.current
 
@@ -357,8 +429,10 @@ export function useVoiceInteraction(reda: RedaControls, { targetName, levelElRef
     }
 
     const s = session.current
-    if (!s) {
-      fail(connecting.current ? 'waking' : 'connect')
+    if (!s || greeting.current) {
+      // Let go before Reda could hear anything: ask again rather than answer half a question.
+      s?.setMicMuted(true)
+      fail(s || connecting.current ? 'waking' : 'connect')
       return
     }
     if (levelWorks.current && peak.current < SILENCE_LEVEL) {
@@ -374,6 +448,7 @@ export function useVoiceInteraction(reda: RedaControls, { targetName, levelElRef
     wantsAnswer.current = true
     lastCheckIn.current = Date.now() // a question counts as contact: no check-in right after
     setGuideAudible(true)
+    markTalking()
     r.transition('thinking')
     r.trigger('question-asked')
     setBubble({ kind: 'thinking', text: 'Thinking…' })
@@ -385,6 +460,7 @@ export function useVoiceInteraction(reda: RedaControls, { targetName, levelElRef
     const r = redaRef.current
     if (!holding.current) return
     holding.current = false
+    setMicLive(false)
     clearTimer('connect')
     session.current?.setMicMuted(true)
     stopLevels()
@@ -416,5 +492,5 @@ export function useVoiceInteraction(reda: RedaControls, { targetName, levelElRef
     }
   }, [endSession])
 
-  return { bubble, pressStart, pressEnd, pressCancel, dismissBubble }
+  return { bubble, micLive, pressStart, pressEnd, pressCancel, dismissBubble }
 }

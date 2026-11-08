@@ -95,12 +95,13 @@ export function RedaAssistant({ targetName = null, bottomPx = 168, hidden = fals
     <div
       className={`reda-root${hidden ? ' reda-hidden' : ''}`}
       data-state={interaction}
+      data-mic={interaction === 'listening' && !voice.micLive ? 'connecting' : undefined}
       data-emotion={emotion}
       style={{ bottom: bottomPx, '--float-dur': floatDur } as CSSProperties}
     >
       {/* No on-screen text: Reda answers out loud. This is only read by screen readers. */}
       <span className="reda-sr-only" role="status" aria-live="polite">
-        {voice.bubble?.kind === 'listening' || voice.bubble?.kind === 'thinking' ? voice.bubble.text : voice.bubble?.kind === 'error' ? voice.bubble.text : ''}
+        {voice.bubble?.kind === 'listening' && !voice.micLive ? 'Connecting… start talking when Reda turns purple.' : voice.bubble?.kind === 'listening' || voice.bubble?.kind === 'thinking' ? voice.bubble.text : voice.bubble?.kind === 'error' ? voice.bubble.text : ''}
       </span>
 
       <button

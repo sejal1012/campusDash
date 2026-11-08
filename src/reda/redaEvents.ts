@@ -172,3 +172,20 @@ export function reportDistanceToTarget(targetId: string | null, meters: number |
 export function resetDistanceTracking() {
   dist = null
 }
+
+// ---------- live conversation vs narration ----------
+
+let lastTalkAt = 0
+/** Called by the live conversation whenever the player or the guide is talking. */
+export function markTalking() {
+  lastTalkAt = Date.now()
+}
+/** True if a live conversation was going on within the last `ms`. Narration stays quiet then. */
+export function talkedWithin(ms: number) {
+  return Date.now() - lastTalkAt < ms
+}
+
+/** Dev-only console trace of what Reda says and where it came from. */
+export function logSpeech(source: string, text: string) {
+  if (import.meta.env.DEV) console.info(`[Reda] ${source}: ${text}`)
+}
