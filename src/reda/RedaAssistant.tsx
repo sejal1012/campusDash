@@ -11,6 +11,7 @@ import { RedaFace, faceFor } from './RedaExpressions'
 import { useRedaState } from './useRedaState'
 import { useVoiceInteraction } from './useVoiceInteraction'
 import { useRedaNarration } from './useRedaNarration'
+import { duckMusic } from '../audio/bgMusic'
 import './RedaAnimations.css'
 
 interface Props {
@@ -48,6 +49,8 @@ export function RedaAssistant({ targetName = null, bottomPx = 168, hidden = fals
   }, [hidden]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const { interaction } = reda
+  // Background music dips while Reda listens, thinks or talks.
+  useEffect(() => duckMusic(interaction !== 'idle'), [interaction])
   const { emotion, key, seed } = reda.emotion
   const face = faceFor(interaction, emotion)
 

@@ -4,6 +4,7 @@ import { useRunRoster } from '../game/run'
 import { useDex } from '../game/dex'
 import { bearingDeg } from '../location/geo'
 import type { LngLat } from '../types'
+import { setMusicMuted, useMusicMuted } from '../audio/bgMusic'
 
 const card = 'border border-[#ffb02e]/60 bg-[#fff6e5]' // cream with an amber edge
 const navyCard = 'border border-white/15 bg-[rgba(8,20,40,0.88)]' // creature strip and radar stay navy so they stand out from the beige roads
@@ -255,5 +256,27 @@ export function DistanceDial({ targetName, creatureId, distanceM, hintLevel, pla
         </div>
       </div>
     </div>
+  )
+}
+
+/** Small round button that turns the background music on and off. */
+export function MusicToggle() {
+  const muted = useMusicMuted()
+  return (
+    <button
+      type="button"
+      onClick={() => setMusicMuted(!muted)}
+      className={`pointer-events-auto flex h-9 w-9 shrink-0 items-center justify-center rounded-full shadow-[0_4px_14px_rgba(0,0,0,0.3)] active:scale-95 ${card} ${ink}`}
+      aria-label={muted ? 'Turn music on' : 'Turn music off'}
+      aria-pressed={!muted}
+      title={muted ? 'Music off' : 'Music on'}
+    >
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+        <path d="M9 18V5l11-2v13" />
+        <circle cx="6" cy="18" r="3" fill="currentColor" />
+        <circle cx="17" cy="16" r="3" fill="currentColor" />
+        {muted && <path d="M3 3l18 18" stroke="var(--coral, #ef6f5a)" strokeWidth="2.6" />}
+      </svg>
+    </button>
   )
 }
