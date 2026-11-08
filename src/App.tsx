@@ -15,6 +15,7 @@ import { questionsFor } from './data/questions'
 import type { CatchResult } from './game/scoring'
 import { CatchScreen } from './screens/CatchScreen'
 import { EndScreen } from './screens/EndScreen'
+import { LocationGate } from './screens/LocationGate'
 import { CreatureYard } from './hud/CreatureYard'
 import { parMsFor, scoreRun, type StopResult } from './game/runScore'
 import { PlaceLearnedSheet } from './screens/PlaceLearnedSheet'
@@ -78,7 +79,7 @@ export default function App() {
       setRunCreatureIds(picked.map((l) => l.creatureId))
     }
     if (fix) return choose(fix.pos)
-    if (gpsFailed) return choose(null)
+    if (gpsFailed) return DEBUG ? choose(null) : undefined // without GPS the game is blocked (see LocationGate)
     const t = setTimeout(() => choose(null), CONFIG.mapStartWaitMs + 2000)
     return () => clearTimeout(t)
   }, [runLocations, launching, startedAt, fix, gpsFailed])
@@ -136,6 +137,16 @@ export default function App() {
   const arrivedStop = stops.find((s) => s.id === arrivedId) ?? null
   const arrivedCreature = arrivedStop ? ROSTER.find((c) => c.id === arrivedStop.creatureId) ?? null : null
   const arrivedQuestions = useMemo(() => (arrivedId ? questionsFor(arrivedId) : []), [arrivedId])
+
+  // No location (denied, or the device cannot give one) before the first position: block the game and the map.
+  // Debug mode skips this so the teleport tools still work on a laptop without GPS.
+  if (!DEBUG && !fix && gpsFailed && (launching || startedAt !== null)) {
+    return (
+      <AppShell>
+        <LocationGate status={status} />
+      </AppShell>
+    )
+  }
 
   if (startedAt === null) {
     return (
