@@ -10,8 +10,6 @@ import { useSyncExternalStore } from 'react'
 const SRC = '/audio/bg-music.mp3'
 /** "Very light": well under Reda's voice. */
 const VOLUME = 0.1
-/** While Reda is speaking or listening. */
-const DUCKED_VOLUME = 0.03
 const FADE_S = 0.6
 const STORAGE_KEY = 'campusdash.music'
 
@@ -32,7 +30,7 @@ function readMuted() {
 }
 
 function targetVolume() {
-  return muted ? 0 : ducked ? DUCKED_VOLUME : VOLUME
+  return muted || ducked ? 0 : VOLUME
 }
 
 function applyVolume() {
@@ -66,7 +64,7 @@ function setup() {
 }
 
 function play() {
-  if (!audio) return
+  if (!audio || ducked) return
   void ctx?.resume().catch(() => {})
   audio.play().catch(() => {
     /* blocked until a tap: the toggle button will try again */
@@ -100,11 +98,19 @@ export function startMusicWhenAllowed() {
   UNLOCK_EVENTS.forEach((t) => window.addEventListener(t, onTap, true))
 }
 
-/** Lower the music while Reda talks or listens. */
+/**
+ * Silence the music while Reda listens or talks: the mic would otherwise pick it up
+ * and the guide hears music instead of the player. It fades out, pauses, and comes back after.
+ */
 export function duckMusic(value: boolean) {
   if (ducked === value) return
   ducked = value
   applyVolume()
+  if (value) {
+    window.setTimeout(() => ducked && audio?.pause(), FADE_S * 1000 + 50)
+  } else if (started && !muted) {
+    play()
+  }
 }
 
 export function setMusicMuted(value: boolean) {
