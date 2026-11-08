@@ -19,5 +19,5 @@ export function toStop(l: Location): Stop {
 }
 
 export function toCreature(l: Location): Creature {
-  return { id: l.creatureId, name: l.creatureId, stopId: l.id, coords: l.coords, art: creatureArtUrl(l.creatureId) }
+  return { id: l.creatureId, name: l.creatureId, stopId: l.id, placeName: l.name, coords: l.coords, art: creatureArtUrl(l.creatureId) }
 }

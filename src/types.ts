@@ -14,6 +14,8 @@ export interface Creature {
   id: string
   name: string
   stopId: string
+  /** Name of the place this creature lives at (shown above it once unlocked). */
+  placeName?: string
   coords: LngLat
   art: string
   question?: { text: string; options: string[]; answerIndex: number } // quiz lives in data/questions.json

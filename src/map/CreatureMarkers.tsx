@@ -22,7 +22,7 @@ function Sprite({ art, name, unlocked }: { art: string; name: string; unlocked: 
   )
 }
 
-/** Visible within creatureVisibleM. Tappable (with chip) within creatureCatchM. */
+/** Visible within creatureVisibleM. Tap to unlock chip within creatureCatchM. */
 export function CreatureMarkers({ creatures, player, collectedIds, onCreatureTap, showAll = false }: Props) {
   if (!player && !showAll) return null
   return (
@@ -30,10 +30,14 @@ export function CreatureMarkers({ creatures, player, collectedIds, onCreatureTap
       {creatures.map((c) => {
         const d = player ? distanceM(player, c.coords) : Infinity
         if (!showAll && d > CONFIG.creatureVisibleM) return null
-        const inReach = d <= CONFIG.creatureCatchM
+        const unlocked = collectedIds.includes(c.stopId)
+        const inReach = !unlocked && d <= CONFIG.creatureCatchM
         return (
           <Marker key={c.id} longitude={c.coords[0]} latitude={c.coords[1]} anchor="bottom" pitchAlignment="viewport" rotationAlignment="viewport">
             <div className="flex flex-col items-center">
+              {unlocked && c.placeName && (
+                <div className="mb-1 max-w-[150px] truncate rounded-full bg-white px-3 py-1 text-xs font-bold text-[#0b1b33] shadow-lg">{c.placeName}</div>
+              )}
               {inReach && (
                 <button
                   type="button"
@@ -43,10 +47,10 @@ export function CreatureMarkers({ creatures, player, collectedIds, onCreatureTap
                   }}
                   className="mb-1 min-h-11 rounded-full bg-[#005bbb] px-4 text-xs font-semibold text-white shadow-lg active:bg-[#003f87]"
                 >
-                  Tap to catch
+                  Tap to unlock
                 </button>
               )}
-              <Sprite art={c.art} name={c.name} unlocked={collectedIds.includes(c.stopId)} />
+              <Sprite art={c.art} name={c.name} unlocked={unlocked} />
             </div>
           </Marker>
         )
