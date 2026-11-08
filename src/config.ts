@@ -29,8 +29,7 @@ export const MAP_CONFIG = {
     [-78.805, 42.987],
     [-78.769, 43.015],
   ] as [LngLat, LngLat],
-  style: 'mapbox://styles/mapbox/light-v11', // light theme (CLAUDE.md default was satellite-streets-v12)
-  buildingColor: '#aab8cc',
+  style: 'mapbox://styles/mapbox/streets-v12', // recolored to a cartoon look in src/map/cartoonStyle.ts
   hazeColor: '11, 27, 51',
   enableTerrain: false, // terrain is off by default
   hazePx: 250,

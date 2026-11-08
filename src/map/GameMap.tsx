@@ -3,6 +3,7 @@ import Map, { Layer, Source, type MapMouseEvent, type MapRef } from 'react-map-g
 import { CONFIG, MAP_CONFIG } from '../config'
 import type { Creature, LngLat, PlayerFix, Stop } from '../types'
 import { CreatureMarkers } from './CreatureMarkers'
+import { applyCartoonStyle } from './cartoonStyle'
 import { circleRing } from '../location/geo'
 import { PlayerMarker } from './PlayerMarker'
 import { StopPins } from './StopPins'
@@ -41,26 +42,7 @@ export function GameMap({ player, stops, creatures, collectedIds, targetId, hint
     const map = mapRef.current?.getMap()
     if (!map) return
     try {
-      // Hide all basemap text (place, POI and road names) so players must find places themselves.
-      for (const layer of map.getStyle()?.layers ?? []) {
-        if (layer.type === 'symbol') map.setLayoutProperty(layer.id, 'visibility', 'none')
-      }
-      if (!map.getLayer('3d-buildings')) {
-        map.addLayer({
-          id: '3d-buildings',
-          source: 'composite',
-          'source-layer': 'building',
-          filter: ['==', ['get', 'extrude'], 'true'],
-          type: 'fill-extrusion',
-          minzoom: 15,
-          paint: {
-            'fill-extrusion-color': MAP_CONFIG.buildingColor,
-            'fill-extrusion-height': ['get', 'height'],
-            'fill-extrusion-base': ['get', 'min_height'],
-            'fill-extrusion-opacity': 0.8,
-          },
-        })
-      }
+      applyCartoonStyle(map)
       if (MAP_CONFIG.enableTerrain) {
         map.addSource('mapbox-dem', { type: 'raster-dem', url: 'mapbox://mapbox.mapbox-terrain-dem-v1', tileSize: 512, maxzoom: 14 })
         map.setTerrain({ source: 'mapbox-dem', exaggeration: 1 })
@@ -120,7 +102,7 @@ export function GameMap({ player, stops, creatures, collectedIds, targetId, hint
       >
         {catchRing && (
           <Source id="catch-ring" type="geojson" data={catchRing}>
-            <Layer id="catch-ring-line" type="line" paint={{ 'line-color': '#0b1b33', 'line-width': 2, 'line-dasharray': [2, 2], 'line-opacity': 0.85 }} />
+            <Layer id="catch-ring-line" type="line" paint={{ 'line-color': '#ffffff', 'line-width': 2.5, 'line-dasharray': [2, 2], 'line-opacity': 0.85 }} />
           </Source>
         )}
         <StopPins stops={stops} collectedIds={collectedIds} targetId={targetId} hintLevel={hintLevel} />
