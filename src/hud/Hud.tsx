@@ -39,7 +39,7 @@ export function DexStrip() {
                 id={c.id}
                 name={c.name}
                 size={36}
-                look={entry === 'gold' ? 'gold' : entry ? 'color' : 'gray'}
+                look={entry ? 'color' : 'gray'}
                 className="h-auto max-h-9 w-full max-w-9 object-contain"
               />
             </li>
