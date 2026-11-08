@@ -35,7 +35,7 @@ export function DebugOverlay({ fix, status, targetPos, hintLevel }: Props) {
   }
 
   return (
-    <div className="absolute left-2 top-2 z-20 w-[220px] rounded-xl border border-white/15 bg-[rgba(8,20,40,0.92)] p-3 text-[11px] leading-5 text-[#b9c6dc]">
+    <div className="absolute left-2 top-[190px] z-20 w-[220px] rounded-xl border border-white/15 bg-[rgba(8,20,40,0.92)] p-3 text-[11px] leading-5 text-[#b9c6dc]">
       <div className="font-semibold text-[#ffb02e]">DEBUG (tap map to teleport)</div>
       <div>{fix ? `lng, lat: ${fix.pos[0].toFixed(6)}, ${fix.pos[1].toFixed(6)}` : 'lng, lat: none yet'}</div>
       <div>accuracy: {fix ? `${Math.round(fix.accuracy)} m` : 'n/a'}</div>

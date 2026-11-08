@@ -16,12 +16,14 @@ export interface GameMapProps {
   hintLevel: 1 | 2 | 3
   onCreatureTap: (id: string) => void
   onMapTap?: (pos: LngLat) => void
+  /** Px kept free at the bottom for the HUD (moves the recenter button up). */
+  bottomInsetPx?: number
 }
 
 const TOKEN = import.meta.env.VITE_MAPBOX_TOKEN as string | undefined
 
 /** Presentational map: no store, no game logic. */
-export function GameMap({ player, stops, creatures, collectedIds, targetId, hintLevel, onCreatureTap, onMapTap }: GameMapProps) {
+export function GameMap({ player, stops, creatures, collectedIds, targetId, hintLevel, onCreatureTap, onMapTap, bottomInsetPx = 96 }: GameMapProps) {
   const mapRef = useRef<MapRef>(null)
   const [following, setFollowing] = useState(true)
   const playerPos = player?.pos ?? null
@@ -37,6 +39,10 @@ export function GameMap({ player, stops, creatures, collectedIds, targetId, hint
     const map = mapRef.current?.getMap()
     if (!map) return
     try {
+      // Hide all basemap text (place, POI and road names) so players must find places themselves.
+      for (const layer of map.getStyle()?.layers ?? []) {
+        if (layer.type === 'symbol') map.setLayoutProperty(layer.id, 'visibility', 'none')
+      }
       if (!map.getLayer('3d-buildings')) {
         map.addLayer({
           id: '3d-buildings',
@@ -128,9 +134,22 @@ export function GameMap({ player, stops, creatures, collectedIds, targetId, hint
 
       <button
         type="button"
+        aria-label="Face north"
+        onClick={() => mapRef.current?.easeTo({ bearing: 0, duration: 500 })}
+        className="absolute right-4 top-[max(1rem,env(safe-area-inset-top))] flex h-12 w-12 items-center justify-center rounded-full border border-white/15 bg-[rgba(8,20,40,0.92)] text-white active:bg-[#003f87]"
+      >
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#ffb02e" strokeWidth="2" strokeLinejoin="round" aria-hidden="true">
+          <circle cx="12" cy="12" r="9" />
+          <path d="M15.5 8.5l-2 5-5 2 2-5z" />
+        </svg>
+      </button>
+
+      <button
+        type="button"
         aria-label="Recenter on my location"
         onClick={recenter}
-        className="absolute bottom-24 right-4 flex h-12 w-12 items-center justify-center rounded-full border border-white/15 bg-[rgba(8,20,40,0.92)] text-white shadow-lg active:bg-[#003f87]"
+        style={{ bottom: bottomInsetPx }}
+        className="absolute right-4 flex h-12 w-12 items-center justify-center rounded-full border border-white/15 bg-[rgba(8,20,40,0.92)] text-white shadow-lg active:bg-[#003f87]"
       >
         <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={following ? '#ffb02e' : 'currentColor'} strokeWidth="2" strokeLinecap="round" aria-hidden="true">
           <circle cx="12" cy="12" r="4" />

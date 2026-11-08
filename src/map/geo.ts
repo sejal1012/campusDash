@@ -67,3 +67,12 @@ export function circleRing(center: LngLat, radiusM: number, steps = 64): LngLat[
   }
   return ring
 }
+
+/** Initial compass bearing in degrees (0 = north, clockwise) from a to b. For the hint arrow only. */
+export function bearingDeg(a: LngLat, b: LngLat): number {
+  const rad = Math.PI / 180
+  const dLng = (b[0] - a[0]) * rad
+  const y = Math.sin(dLng) * Math.cos(b[1] * rad)
+  const x = Math.cos(a[1] * rad) * Math.sin(b[1] * rad) - Math.sin(a[1] * rad) * Math.cos(b[1] * rad) * Math.cos(dLng)
+  return (Math.atan2(y, x) / rad + 360) % 360
+}

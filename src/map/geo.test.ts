@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   averageFixes,
+  bearingDeg,
   circleRing,
   distanceM,
   formatLngLat,
@@ -92,5 +93,14 @@ describe('circleRing', () => {
     const ring = circleRing(A, 30)
     expect(ring[0]).toEqual(ring[ring.length - 1])
     for (const p of ring) expect(Math.abs(distanceM(A, p) - 30)).toBeLessThan(0.5)
+  })
+})
+
+describe('bearingDeg', () => {
+  it('points north, east, south, west', () => {
+    expect(bearingDeg(A, [A[0], A[1] + 0.01])).toBeCloseTo(0, 0)
+    expect(bearingDeg(A, [A[0] + 0.01, A[1]])).toBeCloseTo(90, 0)
+    expect(bearingDeg(A, [A[0], A[1] - 0.01])).toBeCloseTo(180, 0)
+    expect(bearingDeg(A, [A[0] - 0.01, A[1]])).toBeCloseTo(270, 0)
   })
 })
