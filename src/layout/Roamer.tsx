@@ -12,6 +12,9 @@ interface Props {
   size?: number
   /** Background look: faint, no speech bubble, still plays tricks. Used in the bottom bar. */
   ghost?: boolean
+  /** Slide down from above into its spot when it first appears (the creature has just been unlocked). */
+  dropIn?: boolean
+  dropDelayMs?: number
 }
 
 /**
@@ -19,7 +22,7 @@ interface Props {
  * Positions are in percent of the parent, so it works at any window size.
  * Every so often it says something in a speech bubble: usually its sound, sometimes a funny line.
  */
-export function Roamer({ creature, size = 84, ghost = false }: Props) {
+export function Roamer({ creature, size = 84, ghost = false, dropIn = false, dropDelayMs = 0 }: Props) {
   const start = useRef({ x: rand(5, 95), y: rand(10, 95) })
   const [move, setMove] = useState({ ...start.current, ms: 0, facingLeft: false, walking: false })
   const [bubble, setBubble] = useState<string | null>(null)
@@ -64,7 +67,7 @@ export function Roamer({ creature, size = 84, ghost = false }: Props) {
   }, [emojis])
 
   // Tricks every few seconds: hop, spin, run off and come back, or a big burst of its effects.
-  const [trick, setTrick] = useState<'hop' | 'spin' | 'runoff' | 'gone' | 'runin' | null>(null)
+  const [trick, setTrick] = useState<'hop' | 'spin' | 'dance' | 'flip' | 'runoff' | 'gone' | 'runin' | null>(null)
   useEffect(() => {
     if (reducedMotion()) return
     const timers: ReturnType<typeof setTimeout>[] = []
@@ -73,17 +76,28 @@ export function Roamer({ creature, size = 84, ghost = false }: Props) {
     const play = () => {
       if (!alive) return
       const roll = Math.random()
-      if (roll < 0.3) {
+      if (roll < 0.18) {
         burstRef.current(ghost ? 4 : 7)
         setTrick('hop')
         later(() => setTrick(null), 700)
         later(play, rand(4500, 9000))
-      } else if (roll < 0.5) {
+      } else if (roll < 0.33) {
         setTrick('spin')
         burstRef.current(3)
         later(() => setTrick(null), 900)
         later(play, rand(4500, 9000))
-      } else if (roll < 0.8) {
+      } else if (roll < 0.53) {
+        setTrick('dance')
+        burstRef.current(4)
+        later(() => burstRef.current(4), 800)
+        later(() => setTrick(null), 1600)
+        later(play, rand(4500, 9000))
+      } else if (roll < 0.65) {
+        setTrick('flip')
+        later(() => burstRef.current(6), 650)
+        later(() => setTrick(null), 900)
+        later(play, rand(4500, 9000))
+      } else if (roll < 0.88) {
         // Run off the edge, wait out of sight, run back in.
         setTrick('runoff')
         later(() => setTrick('gone'), 1100)
@@ -147,11 +161,13 @@ export function Roamer({ creature, size = 84, ghost = false }: Props) {
         </span>
       ))}
       {bubble && <div className="speech-bubble" key={bubble}>{bubble}</div>}
+      <div className={dropIn ? 'creature-drop-in' : undefined} style={dropIn ? { animationDelay: `${dropDelayMs}ms` } : undefined}>
       <div className={trick ? `trick-${trick}` : undefined}>
       <div className={walking ? 'anim-walk' : 'anim-breathe'}>
         <div style={{ transform: facingLeft ? 'scaleX(-1)' : undefined, transition: 'transform 250ms' }}>
           <CreatureArt id={creature.id} name={creature.name} size={size} look="color" />
         </div>
+      </div>
       </div>
       </div>
       <div className="mx-auto -mt-2 h-2 w-3/5 rounded-[50%] bg-black/30" aria-hidden="true" />

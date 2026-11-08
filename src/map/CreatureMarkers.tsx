@@ -6,8 +6,10 @@ import { distanceM } from '../location/geo'
 interface Props {
   creatures: Creature[]
   player: LngLat | null
-  /** Ids of stops already reached. Their creatures show in colour, the rest grey. */
+  /** Ids of stops already finished (quiz done). No more "Tap to unlock" there. */
   collectedIds: string[]
+  /** Ids of stops whose creature was caught. Only these show in colour with their place name; the rest stay grey. */
+  caughtIds: string[]
   onCreatureTap: (id: string) => void
   /** Show every creature on the map, even far away (placement/preview). Default: only near the player. */
   showAll?: boolean
@@ -23,15 +25,15 @@ function Sprite({ art, name, unlocked }: { art: string; name: string; unlocked: 
 }
 
 /** Visible within creatureVisibleM. Tap to unlock chip within creatureCatchM. */
-export function CreatureMarkers({ creatures, player, collectedIds, onCreatureTap, showAll = false }: Props) {
+export function CreatureMarkers({ creatures, player, collectedIds, caughtIds, onCreatureTap, showAll = false }: Props) {
   if (!player && !showAll) return null
   return (
     <>
       {creatures.map((c) => {
         const d = player ? distanceM(player, c.coords) : Infinity
         if (!showAll && d > CONFIG.creatureVisibleM) return null
-        const unlocked = collectedIds.includes(c.stopId)
-        const inReach = !unlocked && d <= CONFIG.creatureCatchM
+        const unlocked = caughtIds.includes(c.stopId)
+        const inReach = !collectedIds.includes(c.stopId) && d <= CONFIG.creatureCatchM
         return (
           <Marker key={c.id} longitude={c.coords[0]} latitude={c.coords[1]} anchor="bottom" pitchAlignment="viewport" rotationAlignment="viewport">
             <div className="flex flex-col items-center">
