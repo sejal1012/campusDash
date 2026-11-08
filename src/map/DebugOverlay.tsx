@@ -8,10 +8,12 @@ interface Props {
   status: GpsStatus
   targetPos: LngLat | null
   hintLevel: 1 | 2 | 3
+  teleportMode: boolean
+  onToggleTeleport: () => void
 }
 
 /** Testing only (?debug=1). Not shown to players. */
-export function DebugOverlay({ fix, status, targetPos, hintLevel }: Props) {
+export function DebugOverlay({ fix, status, targetPos, hintLevel, teleportMode, onToggleTeleport }: Props) {
   const [capture, setCapture] = useState(false)
   const [recent, setRecent] = useState<PlayerFix[]>([])
   const [copied, setCopied] = useState(false)
@@ -46,13 +48,20 @@ export function DebugOverlay({ fix, status, targetPos, hintLevel }: Props) {
 
   return (
     <div className="absolute left-2 top-[190px] z-20 w-[220px] rounded-xl border border-white/15 bg-[rgba(8,20,40,0.92)] p-3 text-[11px] leading-5 text-[#b9c6dc]">
-      <div className="font-semibold text-[#ffb02e]">DEBUG (tap map to teleport)</div>
+      <div className="font-semibold text-[#ffb02e]">DEBUG</div>
       <div>{fix ? `lng, lat: ${fix.pos[0].toFixed(6)}, ${fix.pos[1].toFixed(6)}` : 'lng, lat: none yet'}</div>
       <div>accuracy: {fix ? `${Math.round(fix.accuracy)} m` : 'n/a'}</div>
       <div>status: {status}</div>
       <div>fixes: {count}{fix ? `, last ${Math.max(0, Math.round((now - fix.timestamp) / 1000))} s ago` : ''}</div>
       <div>hint level: {hintLevel}</div>
       <div>to target: {fix && targetPos ? `${Math.round(distanceM(fix.pos, targetPos))} m` : 'n/a'}</div>
+      <button
+        type="button"
+        onClick={onToggleTeleport}
+        className={`mt-2 min-h-11 w-full rounded-lg px-3 font-semibold ${teleportMode ? 'bg-[#ffb02e] text-[#0b1b33]' : 'border border-white/15 text-white'}`}
+      >
+        {teleportMode ? 'Teleport on (tap map). Tap to use real GPS' : 'Real GPS. Tap to teleport instead'}
+      </button>
       <button
         type="button"
         onClick={() => {

@@ -18,6 +18,8 @@ export interface PlayerPosition {
   offCampus: boolean
   /** Feed a position through the same pipeline as GPS (debug teleport). Skips smoothing. */
   injectFix: (pos: LngLat, accuracy?: number) => void
+  /** Debug: stop ignoring real GPS after a teleport. */
+  resumeGps: () => void
 }
 
 /** The only place raw browser GPS fields are read. Converts once to [lng, lat]. */
@@ -55,6 +57,11 @@ export function usePlayerPosition({ onFix, stops, enabled = true, relaxAccuracy 
     },
     [publish],
   )
+
+  const resumeGps = useCallback(() => {
+    teleported.current = false
+    lastPos.current = null
+  }, [])
 
   // GPS watch. Cleanup clears the watch, so StrictMode double-mount is safe.
   useEffect(() => {
@@ -112,6 +119,6 @@ export function usePlayerPosition({ onFix, stops, enabled = true, relaxAccuracy 
     }
   }, [enabled])
 
-  return { fix, status, offCampus, injectFix }
+  return { fix, status, offCampus, injectFix, resumeGps }
 }
 

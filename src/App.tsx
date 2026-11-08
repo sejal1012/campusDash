@@ -31,7 +31,8 @@ export default function App() {
     return () => clearInterval(id)
   }, [])
 
-  const { fix, status, offCampus, injectFix } = usePlayerPosition({ stops, relaxAccuracy: DEBUG })
+  const [teleportMode, setTeleportMode] = useState(false)
+  const { fix, status, offCampus, injectFix, resumeGps } = usePlayerPosition({ stops, relaxAccuracy: DEBUG })
 
   const target = useMemo(() => stops.find((s) => !collected.includes(s.id)) ?? null, [collected])
   const banner = STATUS_TEXT[status] ?? (offCampus ? 'Walk mode works on UB North Campus.' : null)
@@ -49,7 +50,7 @@ export default function App() {
             targetId={target?.id ?? null}
             hintLevel={hintLevel}
             onCreatureTap={(id) => setMessage(`Tapped creature ${id} (demo only)`)}
-            onMapTap={DEBUG ? (pos) => injectFix(pos) : undefined}
+            onMapTap={DEBUG && teleportMode ? (pos) => injectFix(pos) : undefined}
             bottomInsetPx={104}
             freeCamera={DEBUG}
           />
@@ -69,7 +70,13 @@ export default function App() {
             {message && <div className="rounded-2xl bg-[#005bbb] px-4 py-2 text-sm">{message}</div>}
           </div>
 
-          {DEBUG && <DebugOverlay fix={fix} status={status} targetPos={target?.coords ?? null} hintLevel={hintLevel} />}
+          {DEBUG && <DebugOverlay fix={fix} status={status} targetPos={target?.coords ?? null} hintLevel={hintLevel}
+              teleportMode={teleportMode}
+              onToggleTeleport={() => {
+                if (teleportMode) resumeGps()
+                setTeleportMode((t) => !t)
+              }}
+            />}
 
           {/* Bottom hint card */}
           <div className="absolute inset-x-0 bottom-0 z-10 flex flex-col gap-2 p-4 pt-0">
