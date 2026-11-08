@@ -12,7 +12,6 @@ import { AppShell } from './layout/AppShell'
 import { usePlayerPosition } from './location/usePlayerPosition'
 import { StartScreen } from './screens/StartScreen'
 import { getCharacter, loadCharacterId, saveCharacterId } from './characters'
-import type { Creature, Stop } from './types'
 
 const DEBUG = new URLSearchParams(window.location.search).get('debug') === '1'
 
