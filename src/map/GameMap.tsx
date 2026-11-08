@@ -3,7 +3,7 @@ import Map, { Layer, Source, type MapMouseEvent, type MapRef } from 'react-map-g
 import { CONFIG, MAP_CONFIG } from '../config'
 import type { Creature, LngLat, PlayerFix, Stop } from '../types'
 import { CreatureMarkers } from './CreatureMarkers'
-import { circleRing } from './geo'
+import { circleRing } from '../location/geo'
 import { PlayerMarker } from './PlayerMarker'
 import { StopPins } from './StopPins'
 

@@ -1,7 +1,7 @@
 import { Marker } from 'react-map-gl/mapbox'
 import { CONFIG } from '../config'
 import type { Creature, LngLat } from '../types'
-import { distanceM } from './geo'
+import { distanceM } from '../location/geo'
 
 interface Props {
   creatures: Creature[]

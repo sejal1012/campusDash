@@ -1,6 +1,5 @@
-import type { ReactNode } from 'react'
-import { bearingDeg } from '../geo'
-import type { LngLat } from '../../types'
+import { bearingDeg } from '../location/geo'
+import type { LngLat } from '../types'
 
 const card = 'border border-white/15 bg-[rgba(8,20,40,0.88)]'
 const heading = { fontFamily: "'Space Grotesk', Inter, sans-serif" }
@@ -104,36 +103,5 @@ export function HintCard({ hintLevel, targetName, distanceM, player, targetPos }
         </div>
       )}
     </div>
-  )
-}
-
-const ICONS: Record<string, ReactNode> = {
-  Map: <path d="M3 6l6-2 6 2 6-2v14l-6 2-6-2-6 2zM9 4v14M15 6v14" />,
-  Dex: <><path d="M12 2.5l8 4.5v10l-8 4.5-8-4.5V7z" /><circle cx="12" cy="12" r="3" /></>,
-  Settings: <><circle cx="12" cy="12" r="3" /><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M4.9 19.1L7 17M17 7l2.1-2.1" /></>,
-}
-
-/** Bottom nav: Map, Dex, Settings. Presentational; the parent owns navigation. */
-export function BottomNav({ active = 'Map', onSelect }: { active?: 'Map' | 'Dex' | 'Settings'; onSelect?: (tab: 'Map' | 'Dex' | 'Settings') => void }) {
-  return (
-    <nav aria-label="Main" className="flex border-t border-white/10 bg-[#0b1b33] pb-[max(0.5rem,env(safe-area-inset-bottom))]">
-      {(['Map', 'Dex', 'Settings'] as const).map((tab) => {
-        const on = tab === active
-        return (
-          <button
-            key={tab}
-            type="button"
-            aria-current={on ? 'page' : undefined}
-            onClick={() => onSelect?.(tab)}
-            className={`flex min-h-14 flex-1 flex-col items-center justify-center gap-1 text-xs font-semibold ${on ? 'text-[#ffb02e]' : 'text-[#9fb1cd]'}`}
-          >
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-              {ICONS[tab]}
-            </svg>
-            {tab}
-          </button>
-        )
-      })}
-    </nav>
   )
 }

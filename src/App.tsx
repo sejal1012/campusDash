@@ -5,9 +5,12 @@ import creaturesData from './data/creatures.mock.json'
 import stopsData from './data/stops.mock.json'
 import { DebugOverlay } from './map/DebugOverlay'
 import { GameMap } from './map/GameMap'
-import { distanceM } from './map/geo'
-import { BottomNav, DexChip, HintCard, MissionCard } from './map/hud/Hud'
-import { usePlayerPosition } from './map/usePlayerPosition'
+import { distanceM } from './location/geo'
+import { DexChip, HintCard, MissionCard } from './hud/Hud'
+import { AppShell } from './layout/AppShell'
+import { HamburgerButton } from './layout/HamburgerButton'
+import type { MenuTab } from './layout/MenuList'
+import { usePlayerPosition } from './location/usePlayerPosition'
 import type { Creature, Stop } from './types'
 
 const stops = stopsData.stops as Stop[]
@@ -24,6 +27,7 @@ export default function App() {
   const [collected, setCollected] = useState<string[]>([])
   const [hintLevel, setHintLevel] = useState<1 | 2 | 3>(1)
   const [message, setMessage] = useState<string | null>(null)
+  const [tab, setTab] = useState<MenuTab>('Map')
   const startedAt = useRef(Date.now())
   const [now, setNow] = useState(Date.now())
   useEffect(() => {
@@ -39,9 +43,9 @@ export default function App() {
   const toTarget = fix && target?.coords ? distanceM(fix.pos, target.coords) : null
 
   return (
-    <div className="app-shell">
-      <div className="app-frame flex flex-col">
-        <div className="relative min-h-0 flex-1">
+    <AppShell active={tab} onSelect={setTab}>
+      {(openMenu) => (
+        <div className="relative h-full">
           <GameMap
             player={fix}
             stops={stops}
@@ -51,14 +55,17 @@ export default function App() {
             hintLevel={hintLevel}
             onCreatureTap={(id) => setMessage(`Tapped creature ${id} (demo only)`)}
             onMapTap={DEBUG && teleportMode ? (pos) => injectFix(pos) : undefined}
-            bottomInsetPx={104}
+            bottomInsetPx={112}
             freeCamera={DEBUG}
           />
 
           {/* Top HUD */}
           <div className="pointer-events-none absolute inset-x-0 top-0 z-10 flex flex-col gap-3 p-4 pt-[max(1rem,env(safe-area-inset-top))]">
-            <div className="pointer-events-auto w-fit">
-              <DexChip found={collected.length} total={stops.length} />
+            <div className="flex items-center gap-2">
+              <HamburgerButton onClick={openMenu} />
+              <div className="pointer-events-auto">
+                <DexChip found={collected.length} total={stops.length} />
+              </div>
             </div>
             <MissionCard
               stopNumber={Math.min(collected.length + 1, stops.length)}
@@ -96,8 +103,7 @@ export default function App() {
             <HintCard hintLevel={hintLevel} targetName={target?.name ?? null} distanceM={toTarget} player={fix?.pos ?? null} targetPos={target?.coords ?? null} />
           </div>
         </div>
-        <BottomNav />
-      </div>
-    </div>
+      )}
+    </AppShell>
   )
 }

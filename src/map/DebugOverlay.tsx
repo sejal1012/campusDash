@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { MAP_CONFIG } from '../config'
 import type { GpsStatus, LngLat, PlayerFix } from '../types'
-import { averageFixes, distanceM, formatLngLat, pushRecent } from './geo'
+import { averageFixes, distanceM, formatLngLat, pushRecent } from '../location/geo'
 
 interface Props {
   fix: PlayerFix | null
