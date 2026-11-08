@@ -8,7 +8,7 @@ import { CONFIG } from './config'
 import { DebugOverlay } from './map/DebugOverlay'
 import { GameMap } from './map/GameMap'
 import { distanceM } from './location/geo'
-import { ClockBadge, DexStrip, DistanceDial, MissionPill } from './hud/Hud'
+import { ClockBadge, DexStrip, DistanceDial, MissionPill, MusicToggle } from './hud/Hud'
 import { recordCatch, resetDex } from './game/dex'
 import { ROSTER } from './data/roster'
 import { questionsFor } from './data/questions'
@@ -27,6 +27,7 @@ import { getCharacter, loadCharacterId, saveCharacterId } from './characters'
 import { RedaAssistant } from './reda/RedaAssistant'
 import { emitGameEvent, reportDistanceToTarget } from './reda/redaEvents'
 import { unlockAudio } from './api'
+import { startMusic } from './audio/bgMusic'
 
 // Space kept free at the bottom of the map. The locate button sits here and the compass above it
 // (two 48 px buttons, 12 px apart = 108 px). The 120 px radar on the left is centered on that pair.
@@ -181,6 +182,7 @@ export default function App() {
           }}
           onLaunch={() => {
             unlockAudio() // phones only allow audio unlocked by a tap
+            startMusic()
             setLaunching(true)
           }}
           onStart={() => {
@@ -222,7 +224,10 @@ export default function App() {
                 stopCount={stops.length}
                 targetName={target?.name ?? null}
               />
-              <ClockBadge elapsedMs={elapsedMs} />
+              <div className="flex flex-col items-center gap-2">
+                <ClockBadge elapsedMs={elapsedMs} />
+                <MusicToggle />
+              </div>
             </div>
             {banner && <div className="rounded-2xl bg-[#ffb02e] px-4 py-2 text-sm font-semibold text-[#0b1b33]">{banner}</div>}
           </div>
