@@ -6,7 +6,8 @@ import { pickRandom } from './game/pickLocations'
 import { DebugOverlay } from './map/DebugOverlay'
 import { GameMap } from './map/GameMap'
 import { distanceM } from './location/geo'
-import { CreatureYard, DexStrip, MissionCard } from './hud/Hud'
+import { BottomBar, DexStrip, MissionCard } from './hud/Hud'
+import { recordCatch, resetDex } from './game/dex'
 import { ArrivalCelebration } from './hud/ArrivalCelebration'
 import { AppShell } from './layout/AppShell'
 import { usePlayerPosition } from './location/usePlayerPosition'
@@ -62,6 +63,7 @@ export default function App() {
     const creature = creatures.find((c) => c.id === creatureId)
     if (!creature || collected.includes(creature.stopId)) return
     setCollected((c) => [...c, creature.stopId])
+    recordCatch(creature.id, 'caught') // lights up the Dex and sends it to the Creature park
     setArrivedId(creature.stopId)
   }
   const arrivedStop = stops.find((s) => s.id === arrivedId) ?? null
@@ -76,6 +78,7 @@ export default function App() {
             saveCharacterId(id)
           }}
           onStart={() => {
+            resetDex() // every run starts with nothing found
             setStartedAt(Date.now())
             setNow(Date.now())
           }}
@@ -108,10 +111,6 @@ export default function App() {
               stopCount={stops.length}
               targetName={target?.name ?? null}
               elapsedMs={Math.max(0, now - startedAt)}
-              hintLevel={hintLevel}
-              distanceM={toTarget}
-              player={fix?.pos ?? null}
-              targetPos={target?.coords ?? null}
             />
             {banner && <div className="rounded-2xl bg-[#ffb02e] px-4 py-2 text-sm font-semibold text-[#0b1b33]">{banner}</div>}
           </div>
@@ -133,10 +132,10 @@ export default function App() {
               }}
             />}
 
-          {/* Bottom: caught creatures wander here on phones. Empty on desktop. */}
-          <CreatureYard />
+          {/* Bottom box: meters left, centered. Unlocked creatures play faintly behind it on phones. */}
+          <BottomBar targetName={target?.name ?? null} distanceM={toTarget} hintLevel={hintLevel} player={fix?.pos ?? null} targetPos={target?.coords ?? null} />
 
-          <div className="absolute inset-x-0 bottom-0 z-10 flex flex-col gap-2 p-4 pt-0">
+          <div className="absolute inset-x-0 bottom-[6.5rem] z-10 flex flex-col gap-2 p-4 pt-0">
             {DEBUG && (
               <div className="flex gap-2">
                 <button type="button" onClick={() => setHintLevel((h) => ((h % 3) + 1) as 1 | 2 | 3)} className="min-h-11 rounded-xl bg-[#005bbb] px-3 text-xs font-semibold">
@@ -145,12 +144,14 @@ export default function App() {
                 <button type="button" disabled={!target} onClick={() => {
                   if (!target) return
                   setCollected((c) => [...c, target.id])
+                  recordCatch(target.creatureId, 'caught')
                   setArrivedId(target.id)
                 }} className="min-h-11 rounded-xl bg-[#3ddc97] px-3 text-xs font-semibold text-[#0b1b33] disabled:opacity-40">
                   Collect target
                 </button>
                 <button type="button" onClick={() => {
                   setCollected([])
+                  resetDex()
                   setArrivedId(null)
                 }} className="min-h-11 rounded-xl border border-white/15 bg-[#0b1b33] px-3 text-xs font-semibold">
                   Reset

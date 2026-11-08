@@ -18,13 +18,12 @@ export function formatStopwatch(ms: number): string {
 /**
  * Top row: all 8 creatures. Gray = still to find, color = caught.
  * Phone and tablet only; on desktop (lg) the left side panel shows this instead, so the row stays empty.
- * Leaves room on the right for the map's compass button.
  */
 export function DexStrip() {
   const dex = useDex()
   const found = ROSTER.filter((c) => dex[c.id]).length
   return (
-    <div className="h-12 pr-16">
+    <div className="h-12">
       <ul
         className={`flex h-full items-center gap-1 rounded-full px-2 lg:hidden ${card}`}
         aria-label={`Campus Dex: ${found} of ${ROSTER.length} caught`}
@@ -54,19 +53,10 @@ interface MissionProps {
   /** e.g. "Davis Hall". Null when the run is done. */
   targetName: string | null
   elapsedMs: number
-  hintLevel: 1 | 2 | 3
-  distanceM: number | null
-  player: LngLat | null
-  targetPos: LngLat | null
 }
 
-/**
- * "Stop 2 of 6 / Get to Davis Hall", stopwatch and distance on the right, progress bars.
- * Hint levels (same rules as the old bottom hint card): L1 distance, L2 arrow + distance, L3 name only.
- */
-export function MissionCard({ stopNumber, stopCount, targetName, elapsedMs, hintLevel, distanceM, player, targetPos }: MissionProps) {
-  const showDistance = targetName !== null && hintLevel <= 2 && distanceM !== null
-  const showArrow = showDistance && hintLevel === 2 && player && targetPos
+/** "Stop 2 of 8 / Get to Davis Hall", stopwatch on the right, progress bars. */
+export function MissionCard({ stopNumber, stopCount, targetName, elapsedMs }: MissionProps) {
   return (
     <div className={`rounded-[22px] px-4 py-3 ${card}`}>
       <div className="flex items-start justify-between gap-3">
@@ -78,27 +68,8 @@ export function MissionCard({ stopNumber, stopCount, targetName, elapsedMs, hint
             {targetName ? `Get to ${targetName}` : 'All stops collected'}
           </div>
         </div>
-        <div className="flex shrink-0 flex-col items-end gap-1">
-          <div className="text-[26px] font-bold leading-none text-[#ffb02e]" style={heading} aria-label="Walking time">
-            {formatStopwatch(elapsedMs)}
-          </div>
-          {showDistance && (
-            <div className="flex items-center gap-1 text-sm font-semibold leading-none text-white">
-              {showArrow && (
-                <svg
-                  width="16"
-                  height="16"
-                  viewBox="0 0 24 24"
-                  role="img"
-                  aria-label="Direction to target"
-                  style={{ transform: `rotate(${bearingDeg(player, targetPos)}deg)` }}
-                >
-                  <path d="M12 3l6 15-6-3-6 3z" fill="#ffb02e" />
-                </svg>
-              )}
-              <span>{Math.round(distanceM)} m <span className="font-normal text-[#b9c6dc]">away</span></span>
-            </div>
-          )}
+        <div className="shrink-0 text-[26px] font-bold leading-none text-[#ffb02e]" style={heading} aria-label="Walking time">
+          {formatStopwatch(elapsedMs)}
         </div>
       </div>
       <div className="mt-2.5 flex gap-1.5" role="img" aria-label={`${Math.min(stopNumber - 1, stopCount)} of ${stopCount} stops collected`}>
@@ -112,30 +83,52 @@ export function MissionCard({ stopNumber, stopCount, targetName, elapsedMs, hint
   )
 }
 
+interface BottomBarProps {
+  targetName: string | null
+  distanceM: number | null
+  hintLevel: 1 | 2 | 3
+  player: LngLat | null
+  targetPos: LngLat | null
+}
+
 /**
- * Bottom of the screen on phone and tablet: caught creatures wander and talk.
- * Hidden on desktop (lg), where they roam the side panels and the bottom stays empty.
+ * Bottom box, same on phone and desktop: the meters left to the target, centered.
+ * Hint levels: L1 distance, L2 arrow + distance, L3 no distance.
+ * On phones (not desktop) the unlocked creatures play faintly behind the text.
  * Does not block map touches.
  */
-export function CreatureYard() {
+export function BottomBar({ targetName, distanceM, hintLevel, player, targetPos }: BottomBarProps) {
   const dex = useDex()
   const caught = ROSTER.filter((c) => dex[c.id])
+  const showArrow = hintLevel === 2 && player && targetPos && distanceM !== null
   return (
-    <div
-      className="pointer-events-none absolute inset-x-4 bottom-[max(1rem,env(safe-area-inset-bottom))] h-20 rounded-[22px] border border-white/15 bg-[#0b1b33] lg:hidden"
-      aria-hidden="true"
-    >
-      {caught.length === 0 ? (
-        <p className="flex h-full items-center justify-center px-6 text-center text-sm text-white/40">
-          Creatures you catch will hang out here.
-        </p>
-      ) : (
-        <div className="absolute inset-x-3 top-3 bottom-1.5">
+    <div className="pointer-events-none absolute inset-x-4 bottom-[max(1rem,env(safe-area-inset-bottom))] h-20 overflow-hidden rounded-[22px] border border-white/15 bg-[#0b1b33]">
+      {caught.length > 0 && (
+        <div className="absolute inset-x-3 inset-y-1.5 lg:hidden" aria-hidden="true">
           {caught.map((c) => (
-            <Roamer key={c.id} creature={c} gold={dex[c.id] === 'gold'} size={48} />
+            <Roamer key={c.id} creature={c} gold={dex[c.id] === 'gold'} size={44} ghost />
           ))}
         </div>
       )}
+      <div className="relative z-[200] flex h-full flex-col items-center justify-center text-center" aria-live="polite">
+        {targetName === null ? (
+          <div className="text-lg font-bold text-[#3ddc97]" style={heading}>All creatures found!</div>
+        ) : distanceM === null ? (
+          <div className="text-sm text-white/60">{hintLevel === 3 ? 'Find it by name' : 'Finding you…'}</div>
+        ) : (
+          <>
+            <div className="flex items-center gap-2 text-[32px] font-bold leading-none text-white [text-shadow:0_2px_6px_rgba(0,0,0,0.6)]" style={heading}>
+              {showArrow && (
+                <svg width="24" height="24" viewBox="0 0 24 24" role="img" aria-label="Direction to target" style={{ transform: `rotate(${bearingDeg(player, targetPos)}deg)` }}>
+                  <path d="M12 3l6 15-6-3-6 3z" fill="#ffb02e" />
+                </svg>
+              )}
+              {Math.round(distanceM)} m
+            </div>
+            <div className="mt-1 text-xs font-semibold uppercase tracking-wider text-[#b9c6dc] [text-shadow:0_1px_4px_rgba(0,0,0,0.6)]">away</div>
+          </>
+        )}
+      </div>
     </div>
   )
 }
