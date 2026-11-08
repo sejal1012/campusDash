@@ -91,3 +91,18 @@ export function nextHeading(
   if (distanceM(anchor, pos) < minMoveM) return { heading: prev, anchor }
   return { heading: bearingDeg(anchor, pos), anchor: pos }
 }
+
+export type Facing = 'front' | 'back' | 'left' | 'right'
+
+/**
+ * Which sprite to show for a compass heading, on a map rotated by `mapBearing` degrees.
+ * Screen-up (away from the viewer) is 'back'; screen-down is 'front'. Null heading faces the viewer.
+ */
+export function facingOnScreen(heading: number | null, mapBearing = 0): Facing {
+  if (heading === null) return 'front'
+  const rel = (((heading - mapBearing) % 360) + 360) % 360
+  if (rel >= 45 && rel < 135) return 'right'
+  if (rel >= 135 && rel < 225) return 'front'
+  if (rel >= 225 && rel < 315) return 'left'
+  return 'back'
+}

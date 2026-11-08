@@ -23,6 +23,22 @@ export function useGlide(target: LngLat | null, onFrame?: (pos: LngLat) => void,
     onFrameRef.current = onFrame
   })
 
+  // The "stop walking" timer lives outside the per-target effect: a reading where the player
+  // hasn't moved must not cancel it (fixes arrive about as often as the timer would fire).
+  const stopTimer = useRef(0)
+  const scheduleStop = () => {
+    if (stopTimer.current) return
+    stopTimer.current = window.setTimeout(() => {
+      stopTimer.current = 0
+      setWalking(false)
+    }, STOP_HOLD_MS)
+  }
+  const cancelStop = () => {
+    clearTimeout(stopTimer.current)
+    stopTimer.current = 0
+  }
+  useEffect(() => () => clearTimeout(stopTimer.current), [])
+
   useEffect(() => {
     if (!target) return
     const from = shownRef.current
@@ -33,10 +49,10 @@ export function useGlide(target: LngLat | null, onFrame?: (pos: LngLat) => void,
     }
     const dist = from ? distanceM(from, target) : Infinity
     if (dist < MIN_STEP_M) {
-      // Standing still. The previous glide's cleanup cancelled its stop timer, so stop here.
-      const stopTimer = window.setTimeout(() => setWalking(false), STOP_HOLD_MS)
-      return () => clearTimeout(stopTimer)
+      scheduleStop() // standing still
+      return
     }
+    cancelStop()
     if (!from || dist > MAX_GLIDE_M) {
       setWalking(false)
       draw(target)
@@ -45,20 +61,37 @@ export function useGlide(target: LngLat | null, onFrame?: (pos: LngLat) => void,
 
     setWalking(true)
     let raf = 0
-    let stopTimer = 0
+    let done = false
     const start = performance.now()
+    const finish = () => {
+      if (done) return
+      done = true
+      cancelAnimationFrame(raf)
+      draw(target)
+      scheduleStop()
+    }
     const tick = (now: number) => {
       const t = Math.min(1, (now - start) / durationMs)
+      if (t >= 1) return finish()
       draw([from[0] + (target[0] - from[0]) * t, from[1] + (target[1] - from[1]) * t])
-      if (t < 1) raf = requestAnimationFrame(tick)
-      else stopTimer = window.setTimeout(() => setWalking(false), STOP_HOLD_MS)
+      raf = requestAnimationFrame(tick)
     }
     raf = requestAnimationFrame(tick)
-    // A new target cancels this glide; the next one starts from wherever the avatar is now.
+    // Animation frames pause in background tabs; make sure the glide still lands.
+    const fallback = window.setTimeout(finish, durationMs + 100)
+    // A new target cancels this glide; the next one starts from where it should be by now
+    // (computed from elapsed time, so it still progresses if animation frames were paused).
     return () => {
+      if (!done) {
+        const t = Math.min(1, (performance.now() - start) / durationMs)
+        shownRef.current = [from[0] + (target[0] - from[0]) * t, from[1] + (target[1] - from[1]) * t]
+      }
+      done = true
       cancelAnimationFrame(raf)
-      clearTimeout(stopTimer)
+      clearTimeout(fallback)
     }
+    // scheduleStop/cancelStop only touch a ref and a state setter.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [target, durationMs])
 
   return { pos: shown, walking }
