@@ -37,7 +37,7 @@
     {
       "stopId": "student-union",
       "questions": [
-        { "text": "Which food spot does the Student Union sign list?", "options": ["Pistachio's", "Tim Hortons", "Bert's"], "answer": 0,
+        { "text": "Which food spot does the Student Union have?", "options": ["Pistachio's", "Tikka Table", "Bert's"], "answer": 0,
           "explain": "The Student Union sign lists Pistachio's.", "verified": false },
         { "text": "Which student government office is in the Student Union?", "options": ["Student Associations", "Graduate Council", "Faculty Senate"], "answer": 0,
           "explain": "The sign lists Student Associations.", "verified": false },

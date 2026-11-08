@@ -56,12 +56,12 @@ export const ROSTER: CreatureInfo[] = [
     lines: ['This is my blue period.', 'Hold still. You are my muse.', 'Art is just fancy fish.'],
   },
   {
-    id: 'dribbull',
-    name: 'Dribbull',
+    id: 'seraphyn',
+    name: 'Seraphyn',
     stopId: 'alumni-arena',
     stopName: 'Alumni Arena',
-    sounds: ['Moo!', 'Snort!', 'Hrrnk!'],
-    lines: ['Leg day is every day.', 'Go Bulls! Wait, that is me.', 'I bench press the bleachers.'],
+    sounds: ['Rawr!', 'Whoosh!', 'Ting!'],
+    lines: ['One wing for good, one wing for chaos.', 'My halo is crooked. Do not tell anyone.', 'Angel on the left, menace on the right.'],
   },
   {
     id: 'meowxolotl',
