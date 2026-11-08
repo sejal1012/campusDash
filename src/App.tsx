@@ -8,11 +8,18 @@ import { GameMap } from './map/GameMap'
 import { distanceM } from './location/geo'
 import { BottomBar, DexStrip, MissionCard } from './hud/Hud'
 import { recordCatch, resetDex } from './game/dex'
-import { ArrivalCelebration } from './hud/ArrivalCelebration'
+import { ROSTER } from './data/roster'
+import { questionsFor } from './data/questions'
+import type { CatchResult } from './game/scoring'
+import { CatchScreen } from './screens/CatchScreen'
+import { PlaceLearnedSheet } from './screens/PlaceLearnedSheet'
 import { AppShell } from './layout/AppShell'
 import { usePlayerPosition } from './location/usePlayerPosition'
 import { StartScreen } from './screens/StartScreen'
 import { getCharacter, loadCharacterId, saveCharacterId } from './characters'
+
+// Every page load is a fresh run: forget anything saved from the last one.
+resetDex()
 
 const DEBUG = new URLSearchParams(window.location.search).get('debug') === '1'
 
@@ -61,15 +68,39 @@ export default function App() {
   const banner = STATUS_TEXT[status] ?? (offCampus ? 'Walk mode works on UB North Campus.' : null)
   const toTarget = fix && target?.coords ? distanceM(fix.pos, target.coords) : null
 
-  // Tapping "Tap to unlock" (only shown within creatureCatchM) unlocks the stop and plays the celebration.
+  // The stopwatch pauses while the player is doing the quiz and reading the facts.
+  const [pause, setPause] = useState<{ at: number | null; total: number }>({ at: null, total: 0 })
+  const resumeClock = () => setPause((p) => (p.at === null ? p : { at: null, total: p.total + (Date.now() - p.at) }))
+  const elapsedMs = runStartedAt ? Math.max(0, (pause.at ?? now) - runStartedAt - pause.total) : 0
+
+  // Arrival flow: reach a stop -> quiz (CatchScreen) -> facts (PlaceLearnedSheet) -> next stop.
+  // catchResult is null while the quiz is open, then holds the result while the facts sheet is open.
+  const [catchResult, setCatchResult] = useState<CatchResult | null>(null)
+  const arrive = (stopId: string) => {
+    if (arrivedId || collected.includes(stopId)) return
+    setArrivedId(stopId)
+    setCatchResult(null)
+    setPause((p) => (p.at === null ? { ...p, at: Date.now() } : p))
+  }
+  // Tapping "Tap to unlock" (only shown within creatureCatchM) starts the quiz for that stop.
   const unlockCreature = (creatureId: string) => {
     const creature = creatures.find((c) => c.id === creatureId)
-    if (!creature || collected.includes(creature.stopId)) return
-    setCollected((c) => [...c, creature.stopId])
-    recordCatch(creature.id, 'caught') // lights up the Dex and sends it to the Creature park
-    setArrivedId(creature.stopId)
+    if (creature) arrive(creature.stopId)
+  }
+  const finishCatch = (result: CatchResult) => {
+    // Wrong answers: the creature is not added to the Dex, but the stop still counts.
+    if (result !== 'escaped' && arrivedStop) recordCatch(arrivedStop.creatureId, result)
+    setCatchResult(result)
+  }
+  const leaveStop = () => {
+    if (arrivedId) setCollected((c) => (c.includes(arrivedId) ? c : [...c, arrivedId]))
+    setArrivedId(null)
+    setCatchResult(null)
+    resumeClock()
   }
   const arrivedStop = stops.find((s) => s.id === arrivedId) ?? null
+  const arrivedCreature = arrivedStop ? ROSTER.find((c) => c.id === arrivedStop.creatureId) ?? null : null
+  const arrivedQuestions = useMemo(() => (arrivedId ? questionsFor(arrivedId) : []), [arrivedId])
 
   if (startedAt === null) {
     return (
@@ -82,7 +113,6 @@ export default function App() {
           }}
           onLaunch={() => setLaunching(true)}
           onStart={() => {
-            resetDex() // every run starts with nothing found
             setStartedAt(Date.now())
           }}
         />
@@ -117,17 +147,22 @@ export default function App() {
               stopNumber={Math.min(collected.length + 1, stops.length)}
               stopCount={stops.length}
               targetName={target?.name ?? null}
-              elapsedMs={runStartedAt ? Math.max(0, now - runStartedAt) : 0}
+              elapsedMs={elapsedMs}
+              allFound={collected.length >= stops.length}
             />
             {banner && <div className="rounded-2xl bg-[#ffb02e] px-4 py-2 text-sm font-semibold text-[#0b1b33]">{banner}</div>}
           </div>
 
-          {arrivedStop && (
-            <ArrivalCelebration
-              placeName={arrivedStop.name}
-              creatureId={arrivedStop.creatureId}
-              creatureName={creatures.find((c) => c.stopId === arrivedStop.id)?.name ?? arrivedStop.creatureId}
-              onContinue={() => setArrivedId(null)}
+          {arrivedStop && arrivedCreature && catchResult === null && (
+            <CatchScreen key={arrivedStop.id} creature={arrivedCreature} questions={arrivedQuestions} onDone={finishCatch} />
+          )}
+          {arrivedStop && arrivedCreature && catchResult !== null && (
+            <PlaceLearnedSheet
+              creature={arrivedCreature}
+              result={catchResult}
+              questions={arrivedQuestions}
+              onNext={leaveStop}
+              nextLabel={collected.length + 1 >= stops.length ? 'Finish' : 'Next stop'}
             />
           )}
 
@@ -142,7 +177,7 @@ export default function App() {
           {/* Bottom box: meters left, centered. Unlocked creatures play faintly behind it on phones.
               Wrapped in a full-frame layer so it can stay hidden during the opening fly-in. */}
           <div className={`pointer-events-none absolute inset-0 z-10 ${runStartedAt ? 'hud-in-bottom' : 'hud-hidden'}`}>
-            <BottomBar targetName={target?.name ?? null} distanceM={toTarget} hintLevel={hintLevel} player={fix?.pos ?? null} targetPos={target?.coords ?? null} />
+            <BottomBar allFound={collected.length >= stops.length} distanceM={toTarget} hintLevel={hintLevel} player={fix?.pos ?? null} targetPos={target?.coords ?? null} />
           </div>
 
           <div className={`absolute inset-x-0 bottom-[6.5rem] z-10 flex flex-col gap-2 p-4 pt-0 ${runStartedAt ? 'hud-in-bottom' : 'hud-hidden'}`}>
@@ -152,10 +187,7 @@ export default function App() {
                   Hint level {hintLevel}
                 </button>
                 <button type="button" disabled={!target} onClick={() => {
-                  if (!target) return
-                  setCollected((c) => [...c, target.id])
-                  recordCatch(target.creatureId, 'caught')
-                  setArrivedId(target.id)
+                  if (target) arrive(target.id)
                 }} className="min-h-11 rounded-xl bg-[#3ddc97] px-3 text-xs font-semibold text-[#0b1b33] disabled:opacity-40">
                   Collect target
                 </button>
@@ -163,6 +195,8 @@ export default function App() {
                   setCollected([])
                   resetDex()
                   setArrivedId(null)
+                  setCatchResult(null)
+                  resumeClock()
                 }} className="min-h-11 rounded-xl border border-white/15 bg-[#0b1b33] px-3 text-xs font-semibold">
                   Reset
                 </button>

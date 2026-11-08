@@ -1,7 +1,6 @@
 import type { CatchResult } from '../game/scoring'
 
 const STYLE: Record<CatchResult, { label: string; cls: string }> = {
-  gold: { label: 'Gold catch', cls: 'bg-[#ffb02e] text-[#0b1b33]' },
   caught: { label: 'Caught', cls: 'bg-[#3ddc97] text-[#0b1b33]' },
   escaped: { label: 'Escaped', cls: 'border border-[#ff7a6b] text-[#ff7a6b]' },
 }

@@ -1,6 +1,6 @@
 // Preview page for building screens without walking around. Open with ?screen=catch
 //   ?screen=catch&stop=davis   start at a given stop
-//   ?screen=card&result=gold   jump straight to the Place learned card (gold | caught | escaped)
+//   ?screen=card&result=caught jump straight to the Place learned card (caught | escaped)
 //   &dex=demo                  pre-fill 5 catches to see the desktop side panels
 // Not part of the real game flow.
 import { useState } from 'react'
@@ -13,17 +13,17 @@ import { CatchScreen } from './CatchScreen'
 import { PlaceLearnedSheet } from './PlaceLearnedSheet'
 
 const params = new URLSearchParams(window.location.search)
-const RESULTS: CatchResult[] = ['gold', 'caught', 'escaped']
+const RESULTS: CatchResult[] = ['caught', 'escaped']
 
 // ?dex=demo pre-fills some catches so the desktop side panels have creatures roaming.
 if (params.get('dex') === 'demo') {
-  ROSTER.slice(0, 5).forEach((c, i) => recordCatch(c.id, i % 2 ? 'caught' : 'gold'))
+  ROSTER.slice(0, 5).forEach((c) => recordCatch(c.id, 'caught'))
 }
 
 export function ScreenPreview() {
   const [index, setIndex] = useState(() => Math.max(0, ROSTER.findIndex((c) => c.stopId === params.get('stop'))))
   const [view, setView] = useState<'catch' | 'card'>(params.get('screen') === 'card' ? 'card' : 'catch')
-  const [result, setResult] = useState<CatchResult>(() => RESULTS.find((r) => r === params.get('result')) ?? 'gold')
+  const [result, setResult] = useState<CatchResult>(() => RESULTS.find((r) => r === params.get('result')) ?? 'caught')
   const [round, setRound] = useState(0) // remounts the catch screen for a fresh try
 
   const creature = ROSTER[index]
