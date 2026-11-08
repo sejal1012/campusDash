@@ -29,7 +29,7 @@ export function PlaceLearnedSheet({ creature, result, questions, onNext, nextLab
         <div className="overflow-y-auto px-5 pt-4 pb-2">
           <div className="flex items-center gap-4">
             <div className="flex h-24 w-24 shrink-0 items-center justify-center rounded-3xl bg-[radial-gradient(circle_at_50%_40%,#1d4a85,#0b1b33)]">
-              <CreatureArt id={creature.id} name={creature.name} size={88} look={result === 'gold' ? 'gold' : result === 'escaped' ? 'gray' : 'color'} />
+              <CreatureArt id={creature.id} name={creature.name} size={88} look={result === 'escaped' ? 'gray' : 'color'} />
             </div>
             <div className="min-w-0">
               <div className="text-[11px] font-medium uppercase tracking-wider text-[#8fe3ff]">Place learned</div>

@@ -3,7 +3,7 @@
 import { useSyncExternalStore } from 'react'
 import type { CatchResult } from './scoring'
 
-export type DexEntry = 'caught' | 'gold'
+export type DexEntry = 'caught'
 export type Dex = Record<string, DexEntry>
 
 const KEY = 'campusDash.dex.v1'
@@ -30,10 +30,9 @@ function save(next: Dex) {
   listeners.forEach((l) => l())
 }
 
-/** Escaped does nothing. Gold is never downgraded to caught. */
+/** Escaped does nothing. */
 export function recordCatch(creatureId: string, result: CatchResult) {
-  if (result === 'escaped' || dex[creatureId] === 'gold') return
-  if (dex[creatureId] === result) return
+  if (result === 'escaped' || dex[creatureId] === result) return
   save({ ...dex, [creatureId]: result })
 }
 

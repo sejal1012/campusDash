@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import Map, { Layer, Source, type MapMouseEvent, type MapRef } from 'react-map-gl/mapbox'
+import Map, { Layer, Marker, Source, type MapMouseEvent, type MapRef } from 'react-map-gl/mapbox'
 import { CONFIG, MAP_CONFIG } from '../config'
 import type { Creature, LngLat, PlayerFix } from '../types'
 import type { Character } from '../characters'
@@ -24,25 +24,68 @@ export interface GameMapProps {
   gpsFailed?: boolean
   /** The UBMon chosen on the start screen. */
   character?: Character
+  /** Called once the opening fly-in has landed on the player (HUD and timer start then). */
+  onIntroDone?: () => void
 }
+
+/** Opening shot: high, flat and turned, then a swoop down to the player. */
+const INTRO = { zoom: MAP_CONFIG.minZoom, pitch: 0, bearing: -70, durationMs: 3000 }
 
 const TOKEN = import.meta.env.VITE_MAPBOX_TOKEN as string | undefined
 
 /** Presentational map: no store, no game logic. */
-export function GameMap({ player, creatures, collectedIds, onCreatureTap, onMapTap, bottomInsetPx = 96, heading = null, freeCamera = false, gpsFailed = false, character }: GameMapProps) {
+export function GameMap({ player, creatures, collectedIds, onCreatureTap, onMapTap, bottomInsetPx = 96, heading = null, freeCamera = false, gpsFailed = false, character, onIntroDone }: GameMapProps) {
   const mapRef = useRef<MapRef>(null)
   const [following, setFollowing] = useState(true)
   const [bearing, setBearing] = useState(0)
   const playerPos = player?.pos ?? null
 
+  // Opening fly-in is running: nothing else moves the camera until it lands.
+  const introRef = useRef(true)
   // Camera follows the avatar frame by frame (as it glides) until the user drags the map away.
   const followingRef = useRef(following)
   useEffect(() => {
     followingRef.current = following
   }, [following])
   const followAvatar = useCallback((pos: LngLat) => {
-    if (followingRef.current) mapRef.current?.jumpTo({ center: pos })
+    if (followingRef.current && !introRef.current) mapRef.current?.jumpTo({ center: pos })
   }, [])
+
+  // Opening fly-in (see startIntro below).
+  const [introDone, setIntroDone] = useState(false)
+  const playerPosRef = useRef(playerPos)
+  useEffect(() => {
+    playerPosRef.current = playerPos
+  })
+  const onIntroDoneRef = useRef(onIntroDone)
+  useEffect(() => {
+    onIntroDoneRef.current = onIntroDone
+  })
+  const finishIntro = useCallback(() => {
+    if (!introRef.current) return
+    introRef.current = false
+    setIntroDone(true)
+    onIntroDoneRef.current?.()
+    // The player may have moved during the flight.
+    const p = playerPosRef.current
+    if (p && followingRef.current) mapRef.current?.easeTo({ center: p, duration: 400 })
+  }, [])
+  const startIntro = useCallback(() => {
+    const map = mapRef.current
+    if (!map || !introRef.current) return
+    const final = { center: playerPosRef.current ?? MAP_CONFIG.center, zoom: MAP_CONFIG.zoom, pitch: MAP_CONFIG.pitch, bearing: 0 }
+    if (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) {
+      map.jumpTo(final)
+      return finishIntro()
+    }
+    map.once('moveend', finishIntro)
+    map.flyTo({ ...final, duration: INTRO.durationMs, curve: 1.3, essential: true })
+  }, [finishIntro])
+  // Safety net: never leave the HUD hidden if the map fails to load.
+  useEffect(() => {
+    const t = setTimeout(finishIntro, CONFIG.mapStartWaitMs + INTRO.durationMs + 2000)
+    return () => clearTimeout(t)
+  }, [finishIntro])
 
   // Open the map on the player's first fix. Wait up to mapStartWaitMs; then (or if GPS fails) open on campus.
   const [startPos, setStartPos] = useState<LngLat | null>(null)
@@ -58,7 +101,7 @@ export function GameMap({ player, creatures, collectedIds, onCreatureTap, onMapT
   // If the map opened on campus before the first fix, move to the player once it arrives.
   const hasFix = playerPos !== null
   useEffect(() => {
-    if (hasFix && followingRef.current && playerPos) mapRef.current?.jumpTo({ center: playerPos })
+    if (hasFix && followingRef.current && !introRef.current && playerPos) mapRef.current?.jumpTo({ center: playerPos })
     // Only on the first fix; after that the glide drives the camera.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [hasFix])
@@ -112,9 +155,14 @@ export function GameMap({ player, creatures, collectedIds, onCreatureTap, onMapT
 
   if (!ready) {
     return (
-      <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-[#0b1b33] text-[#b9c6dc]">
-        <div className="h-10 w-10 animate-spin rounded-full border-4 border-white/15 border-t-[#3ddc97]" aria-hidden="true" />
-        <p className="text-sm font-medium">Finding you…</p>
+      // Same colour as the start screen's exit flash, so the hand-off is seamless.
+      <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 text-[#0a3a8c]" style={{ background: 'radial-gradient(circle at 50% 66%, #ffffff 0%, #d9f1ff 35%, #9fd6ff 100%)' }}>
+        <div className="intro-beacon" aria-hidden="true" style={{ width: 96, height: 96 }}>
+          <span />
+          <span />
+          <span />
+        </div>
+        <p className="text-sm font-semibold">Finding you…</p>
       </div>
     )
   }
@@ -125,14 +173,17 @@ export function GameMap({ player, creatures, collectedIds, onCreatureTap, onMapT
         ref={mapRef}
         mapboxAccessToken={TOKEN}
         mapStyle={MAP_CONFIG.style}
-        initialViewState={{ longitude: initialCenter[0], latitude: initialCenter[1], zoom: MAP_CONFIG.zoom, pitch: MAP_CONFIG.pitch, bearing: 0 }}
+        initialViewState={{ longitude: initialCenter[0], latitude: initialCenter[1], zoom: INTRO.zoom, pitch: INTRO.pitch, bearing: INTRO.bearing }}
         minZoom={freeCamera ? 3 : MAP_CONFIG.minZoom}
         maxZoom={MAP_CONFIG.maxZoom}
         maxPitch={70}
         maxBounds={freeCamera ? undefined : MAP_CONFIG.maxBounds}
         attributionControl={false}
         onStyleData={setupStyle}
-        onLoad={setupStyle}
+        onLoad={() => {
+          setupStyle()
+          startIntro()
+        }}
         onClick={handleClick}
         onDragStart={() => setFollowing(false)}
         onRotate={(e) => setBearing(e.viewState.bearing)}
@@ -145,8 +196,21 @@ export function GameMap({ player, creatures, collectedIds, onCreatureTap, onMapT
           </Source>
         )}
         <CreatureMarkers creatures={creatures} player={playerPos} collectedIds={collectedIds} onCreatureTap={onCreatureTap} showAll />
-        {playerPos && <PlayerMarker pos={playerPos} heading={heading} character={character} onFrame={followAvatar} />}
+        {/* Beacon on the player's spot while the camera flies in; the UBMon drops in once it lands */}
+        {!introDone && startPos && (
+          <Marker longitude={startPos[0]} latitude={startPos[1]} anchor="center" pitchAlignment="map" rotationAlignment="map">
+            <div className="intro-beacon" aria-hidden="true">
+              <span />
+              <span />
+              <span />
+            </div>
+          </Marker>
+        )}
+        {playerPos && introDone && <PlayerMarker pos={playerPos} heading={heading} character={character} onFrame={followAvatar} />}
       </Map>
+
+      {/* Continues the start screen's flash, then fades to reveal the map */}
+      <div className="map-flash pointer-events-none absolute inset-0" aria-hidden="true" />
 
       {/* Navy haze over the horizon. No backdrop-filter. */}
       <div
@@ -158,6 +222,7 @@ export function GameMap({ player, creatures, collectedIds, onCreatureTap, onMapT
       <button
         type="button"
         aria-label="Face north"
+        data-intro={introDone ? 'done' : 'running'}
         onClick={() => mapRef.current?.easeTo({ bearing: 0, duration: 500 })}
         style={{ bottom: bottomInsetPx + 60 }}
         className="absolute right-4 flex h-12 w-12 items-center justify-center rounded-full border border-white/15 bg-[rgba(8,20,40,0.92)] text-white shadow-lg active:bg-[#003f87]"
@@ -173,6 +238,7 @@ export function GameMap({ player, creatures, collectedIds, onCreatureTap, onMapT
       <button
         type="button"
         aria-label="Recenter on my location"
+        data-intro={introDone ? 'done' : 'running'}
         onClick={recenter}
         style={{ bottom: bottomInsetPx }}
         className="absolute right-4 flex h-12 w-12 items-center justify-center rounded-full border border-white/15 bg-[rgba(8,20,40,0.92)] text-white shadow-lg active:bg-[#003f87]"

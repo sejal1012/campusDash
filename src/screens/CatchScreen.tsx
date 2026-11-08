@@ -21,7 +21,7 @@ function shuffleOptions(q: Question): Question {
   return { ...q, options: order.map((i) => q.options[i]), answer: order.indexOf(q.answer) }
 }
 
-// Fixed burst directions for the gold sparkles (no randomness, so it looks the same every time).
+// Fixed burst directions for the catch sparkles (no randomness, so it looks the same every time).
 const SPARKS = Array.from({ length: 14 }, (_, i) => {
   const a = (i / 14) * Math.PI * 2
   const r = i % 2 ? 120 : 85
@@ -93,12 +93,12 @@ export function CatchScreen({ creature, questions, onDone }: Props) {
           <div className="anim-pop">
             <div key={ending ? 'end' : (reaction?.n ?? 0)} className={reactionClass}>
               <div className={ending ? '' : 'anim-bob'}>
-                <CreatureArt id={creature.id} name={creature.name} size={176} look={ending && result === 'gold' ? 'gold' : 'color'} />
+                <CreatureArt id={creature.id} name={creature.name} size={176} look="color" />
               </div>
             </div>
           </div>
 
-          {ending && result === 'gold' && (
+          {ending && result === 'caught' && (
             <div className="pointer-events-none absolute bottom-24 left-1/2 h-0 w-0" aria-hidden="true">
               {SPARKS.map((s, i) => (
                 <svg
@@ -128,8 +128,7 @@ export function CatchScreen({ creature, questions, onDone }: Props) {
               </p>
             </div>
             <ul className="flex flex-col gap-1.5 text-sm text-[#b9c6dc]">
-              <li><span className="font-semibold text-[#ffb02e]">3 right:</span> Gold catch</li>
-              <li><span className="font-semibold text-[#3ddc97]">2 right:</span> Caught</li>
+              <li><span className="font-semibold text-[#3ddc97]">2 or 3 right:</span> You catch it</li>
               <li><span className="font-semibold text-[#ff7a6b]">0 or 1 right:</span> It gets away (try again on a later run)</li>
             </ul>
             <button type="button" className={primaryBtn} onClick={() => setStep('quiz')}>Start</button>
@@ -187,16 +186,10 @@ export function CatchScreen({ creature, questions, onDone }: Props) {
 
         {step === 'end' && (
           <div className="anim-rise flex flex-col gap-4 text-center">
-            {result === 'gold' && (
-              <>
-                <h2 className={`${heading} text-3xl text-[#ffb02e]`}>Gold catch!</h2>
-                <p className="text-[15px] text-[#b9c6dc]">3 of 3 right. You found the shiny gold {creature.name}.</p>
-              </>
-            )}
             {result === 'caught' && (
               <>
                 <h2 className={`${heading} text-3xl text-[#3ddc97]`}>Caught!</h2>
-                <p className="text-[15px] text-[#b9c6dc]">2 of 3 right. {creature.name} joined your Dex. Get all 3 next time for gold.</p>
+                <p className="text-[15px] text-[#b9c6dc]">{correct} of 3 right. {creature.name} joined your Dex.</p>
               </>
             )}
             {result === 'escaped' && (

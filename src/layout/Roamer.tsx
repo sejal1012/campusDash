@@ -9,7 +9,6 @@ const reducedMotion = () => window.matchMedia?.('(prefers-reduced-motion: reduce
 
 interface Props {
   creature: CreatureInfo
-  gold: boolean
   size?: number
   /** Background look: faint, no speech bubble, still plays tricks. Used in the bottom bar. */
   ghost?: boolean
@@ -20,7 +19,7 @@ interface Props {
  * Positions are in percent of the parent, so it works at any window size.
  * Every so often it says something in a speech bubble: usually its sound, sometimes a funny line.
  */
-export function Roamer({ creature, gold, size = 84, ghost = false }: Props) {
+export function Roamer({ creature, size = 84, ghost = false }: Props) {
   const start = useRef({ x: rand(5, 95), y: rand(10, 95) })
   const [move, setMove] = useState({ ...start.current, ms: 0, facingLeft: false, walking: false })
   const [bubble, setBubble] = useState<string | null>(null)
@@ -151,7 +150,7 @@ export function Roamer({ creature, gold, size = 84, ghost = false }: Props) {
       <div className={trick ? `trick-${trick}` : undefined}>
       <div className={walking ? 'anim-walk' : 'anim-breathe'}>
         <div style={{ transform: facingLeft ? 'scaleX(-1)' : undefined, transition: 'transform 250ms' }}>
-          <CreatureArt id={creature.id} name={creature.name} size={size} look={gold ? 'gold' : 'color'} />
+          <CreatureArt id={creature.id} name={creature.name} size={size} look="color" />
         </div>
       </div>
       </div>
