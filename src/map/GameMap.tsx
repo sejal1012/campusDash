@@ -142,9 +142,8 @@ export function GameMap({ player, creatures, collectedIds, onCreatureTap, onMapT
             <Layer id="catch-ring-line" type="line" paint={{ 'line-color': '#ffffff', 'line-width': 2.5, 'line-dasharray': [2, 2], 'line-opacity': 0.85 }} />
           </Source>
         )}
-        <StopPins stops={stops} collectedIds={collectedIds} targetId={targetId} hintLevel={hintLevel} />
-        <CreatureMarkers creatures={creatures} player={playerPos} onCreatureTap={onCreatureTap} />
-        {playerPos && <PlayerMarker pos={playerPos} heading={heading} onFrame={followAvatar} />}
+        <CreatureMarkers creatures={creatures} player={playerPos} collectedIds={collectedIds} onCreatureTap={onCreatureTap} showAll />
+        {playerPos && <PlayerMarker pos={playerPos} heading={heading} character={character} onFrame={followAvatar} />}
       </Map>
 
       {/* Navy haze over the horizon. No backdrop-filter. */}
