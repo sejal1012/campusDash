@@ -2,10 +2,10 @@ import type { GeoJSONSource, Map as MapboxMap } from 'mapbox-gl'
 import { circleRing, distanceM } from '../location/geo'
 import type { LngLat } from '../types'
 
-const SPACING_M = 20 // grid spacing for tree candidates
+const SPACING_M = 24 // grid spacing for tree candidates
 const RADIUS_M = 280 // trees are drawn around the map center only
 const REGEN_M = 25 // redraw once the camera has moved this far
-const KEEP = 0.7 // share of grid cells that get a tree
+const KEEP = 0.55 // share of grid cells that get a tree
 const TRUNK = '#8a5a34'
 const LEAVES = ['#2f7d32', '#3f9a3f', '#58b556'] // dark to light, bottom to top
 
@@ -36,11 +36,10 @@ function treeFeatures(center: LngLat, isBlocked: (p: LngLat) => boolean): GeoJSO
       if (hash(ix, iy, 1) > KEEP) continue
       const p: LngLat = [(ix + 0.15 + 0.7 * hash(ix, iy, 2)) * dLng, (iy + 0.15 + 0.7 * hash(ix, iy, 3)) * dLat]
       if (distanceM(center, p) > RADIUS_M || isBlocked(p)) continue
-      const s = 0.8 + 0.5 * hash(ix, iy, 4) // size variety
-      part(p, 0.6, 0, 2.4 * s, TRUNK)
-      part(p, 3.4 * s, 2.2 * s, 5.2 * s, LEAVES[0])
-      part(p, 2.6 * s, 5.2 * s, 7.4 * s, LEAVES[1])
-      part(p, 1.6 * s, 7.4 * s, 9 * s, LEAVES[2])
+      const s = 0.8 + 0.4 * hash(ix, iy, 4) // size variety
+      part(p, 0.5, 0, 2.4 * s, TRUNK)
+      part(p, 3.2 * s, 2.2 * s, 5.6 * s, LEAVES[0])
+      part(p, 2.1 * s, 5.6 * s, 8 * s, LEAVES[2])
     }
   }
   return out
@@ -84,11 +83,14 @@ export function installTrees(map: MapboxMap): void {
       const center: LngLat = [c.lng, c.lat]
       if (last && distanceM(last, center) < REGEN_M) return
       const { width, height } = map.getCanvas().getBoundingClientRect()
-      const isBlocked = (p: LngLat) => {
+      const hit = (p: LngLat) => {
         const pt = map.project(p)
         if (pt.x < 0 || pt.y < 0 || pt.x > width || pt.y > height) return false // off screen: no check possible
         return map.queryRenderedFeatures(pt, { layers: blockers }).length > 0
       }
+      // Keep a 3 m margin so trees never touch roads or buildings.
+      const isBlocked = (p: LngLat) =>
+        hit(p) || circleRing(p, 3, 4).slice(0, 4).some((q) => hit(q))
       last = center
       ;(map.getSource('trees') as GeoJSONSource).setData({ type: 'FeatureCollection', features: treeFeatures(center, isBlocked) })
     } catch (e) {
