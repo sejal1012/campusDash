@@ -6,12 +6,12 @@ import type { ExpressionSpecification, Map as MapboxMap } from 'mapbox-gl'
  * (Mapbox buildings have no names, so the look is chosen by height only.)
  */
 const LOOKS = [
-  // low, wide buildings: light brick, teal glass, teal roof
-  { name: 'low', maxH: 12, brick: '#c0694f', mortar: '#9c4d39', glass: '#3c8c9a', roof: '#2fa08f' },
+  // low, wide buildings: light brick, teal glass, light grey roof
+  { name: 'low', maxH: 12, brick: '#c0694f', mortar: '#9c4d39', glass: '#3c8c9a', roof: '#c4c0ba' },
   // mid-rise: classic red-brown brick, grey roof
-  { name: 'mid', maxH: 25, brick: '#a9503c', mortar: '#853b2b', glass: '#2f6f86', roof: '#b9b3aa' },
+  { name: 'mid', maxH: 25, brick: '#a9503c', mortar: '#853b2b', glass: '#2f6f86', roof: '#b3aea6' },
   // towers: dark brown brick, narrow dark windows, dark roof
-  { name: 'tall', maxH: Infinity, brick: '#80432f', mortar: '#5f2f21', glass: '#26485f', roof: '#5d4a44' },
+  { name: 'tall', maxH: Infinity, brick: '#80432f', mortar: '#5f2f21', glass: '#26485f', roof: '#8f8a85' },
 ] as const
 
 const EDGE = '#4a2a20'
@@ -51,7 +51,7 @@ function wallImage(look: (typeof LOOKS)[number]): { width: number; height: numbe
   return { width: size, height: size, data: img.data }
 }
 
-/** Brick walls with window bands, coloured roofs and dark outlines. Needs the 'composite' source. */
+/** Brick walls with window bands, grey roofs and dark outlines. Needs the 'composite' source. */
 export function addBuildings(map: MapboxMap): void {
   if (map.getLayer('3d-buildings')) return
 
