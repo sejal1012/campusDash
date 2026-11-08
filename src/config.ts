@@ -14,7 +14,7 @@ export const CONFIG = {
   parFactor: 1.3,
   detourFactor: 1.3,
   walkSpeedMps: 1.4,
-  stopsPerRun: 5, // locations picked at random from the full list each run
+  stopsPerRun: 5, // locations per run: nearest to the player first, the rest random
   quizTries: 2,
   hintRouteRefreshMs: 20000,
 }

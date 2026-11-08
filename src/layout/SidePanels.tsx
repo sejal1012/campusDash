@@ -1,5 +1,5 @@
 import { CreatureArt } from '../components/CreatureArt'
-import { ROSTER } from '../data/roster'
+import { useRunPicked, useRunRoster } from '../game/run'
 import { useDex } from '../game/dex'
 import { Roamer } from './Roamer'
 
@@ -25,11 +25,13 @@ function Backdrop() {
 
 /**
  * Desktop only (1024px and up): fills the empty space on both sides of the phone frame.
- * Left: Dex progress, all 8 creatures (gray until unlocked, then color). Right: unlocked creatures play in the Creature park.
+ * Left: the Dex card, shown once the game starts: this run's creatures (gray until unlocked, then color). Right: the Creature park, also shown once the game starts, where unlocked creatures play.
  */
 export function SidePanels() {
   const dex = useDex()
-  const caught = ROSTER.filter((c) => dex[c.id])
+  const roster = useRunRoster()
+  const picked = useRunPicked() // the 5 are only known once the game starts
+  const caught = roster.filter((c) => dex[c.id])
 
   const column = 'absolute inset-y-0 flex w-[calc(50%-239px)] flex-col p-8'
 
@@ -50,47 +52,60 @@ export function SidePanels() {
           </div>
         </div>
 
-        <div className="mt-6 rounded-3xl border border-white/10 bg-[rgba(8,20,40,0.6)] p-4">
-          <div className="flex items-baseline justify-between">
-            <h2 className="text-xs font-semibold uppercase tracking-wider text-[#b9c6dc]">Campus Dex</h2>
-            <div className="font-display text-lg font-bold">
-              {caught.length} <span className="text-sm text-[#b9c6dc]">/ {ROSTER.length}</span>
+        {/* The whole card appears (glides in from the left, then the creatures pop in one by one) once the game starts. */}
+        {picked && (
+          <div className="anim-dex-card mt-6 rounded-3xl border border-white/10 bg-[rgba(8,20,40,0.6)] p-4">
+            <div className="flex items-baseline justify-between">
+              <h2 className="text-xs font-semibold uppercase tracking-wider text-[#b9c6dc]">Campus Dex</h2>
+              <div className="font-display text-lg font-bold">
+                {caught.length} <span className="text-sm text-[#b9c6dc]">/ {roster.length}</span>
+              </div>
             </div>
-          </div>
-          <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-white/10">
-            <div className="h-full rounded-full bg-[#3ddc97] transition-[width] duration-700" style={{ width: `${(caught.length / ROSTER.length) * 100}%` }} />
-          </div>
+            <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-white/10">
+              <div className="h-full rounded-full bg-[#3ddc97] transition-[width] duration-700" style={{ width: `${(caught.length / roster.length) * 100}%` }} />
+            </div>
 
-          <h3 className="mt-4 text-[11px] font-semibold uppercase tracking-wider text-[#b9c6dc]">
-            {caught.length === ROSTER.length ? 'You found them all!' : 'Your creatures'}
-          </h3>
-          <ul className="mt-2 grid grid-cols-4 gap-2">
-            {ROSTER.map((c) => {
-              const entry = dex[c.id]
-              return (
-                <li key={c.id} className="flex flex-col items-center rounded-2xl bg-white/5 p-1.5" title={entry ? c.name : 'Not found yet'}>
-                  <CreatureArt id={c.id} name={c.name} size={52} look={entry ? 'color' : 'gray'} className="h-auto w-full transition-[filter,opacity] duration-700" />
-                  <span className={`text-[10px] font-semibold ${entry ? 'text-white' : 'text-white/40'}`}>{entry ? c.name : '???'}</span>
-                </li>
-              )
-            })}
-          </ul>
-        </div>
+            <h3 className="mt-4 text-[11px] font-semibold uppercase tracking-wider text-[#b9c6dc]">
+              {caught.length === roster.length ? 'You found them all!' : 'Your creatures'}
+            </h3>
+            <ul className="mt-2 grid grid-cols-4 gap-2">
+              {roster.map((c, i) => {
+                const entry = dex[c.id]
+                return (
+                  <li
+                    key={c.id}
+                    className="anim-dex-tile flex flex-col items-center rounded-2xl bg-white/5 p-1.5"
+                    style={{ animationDelay: `${450 + i * 110}ms` }}
+                    title={entry ? c.name : 'Not found yet'}
+                  >
+                    <CreatureArt id={c.id} name={c.name} size={52} look={entry ? 'color' : 'gray'} className="h-auto w-full transition-[filter,opacity] duration-700" />
+                    <span className={`text-[10px] font-semibold ${entry ? 'text-white' : 'text-white/40'}`}>{entry ? c.name : '???'}</span>
+                  </li>
+                )
+              })}
+            </ul>
+          </div>
+        )}
 
       </aside>
 
       {/* ---------- Right ---------- */}
       <aside className={`${column} right-0`} aria-label="Creature park">
-        <h2 className="font-display text-xl font-bold">Creature park</h2>
-        <p className="mt-1 text-sm text-[#b9c6dc]">Creatures you catch hang out here.</p>
-        <div className="relative mt-6 flex-1" aria-hidden="true">
-          {caught.map((c) => <Roamer key={c.id} creature={c} />)}
-          {caught.length === 0 && (
-            <div className="absolute inset-x-0 top-1/3 rounded-3xl border-2 border-dashed border-white/10 p-6 text-center text-sm text-white/40">
-              Nobody here yet. Catch your first creature!
-            </div>
-          )}
-        </div>
+        {/* Blank until the game starts, then glides in from the right. */}
+        {picked && (
+          <div className="anim-park-in flex flex-1 flex-col">
+          <h2 className="font-display text-xl font-bold">Creature park</h2>
+          <p className="mt-1 text-sm text-[#b9c6dc]">Creatures you catch hang out here.</p>
+          <div className="relative mt-6 flex-1" aria-hidden="true">
+            {caught.map((c) => <Roamer key={c.id} creature={c} />)}
+            {caught.length === 0 && (
+              <div className="absolute inset-x-0 top-1/3 rounded-3xl border-2 border-dashed border-white/10 p-6 text-center text-sm text-white/40">
+                Nobody here yet. Catch your first creature!
+              </div>
+            )}
+          </div>
+          </div>
+        )}
       </aside>
     </div>
   )
