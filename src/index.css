@@ -198,6 +198,24 @@ body {
   from { transform: translateX(0); }
   to { transform: translateX(-100%); }
 }
+/* Characters without walk frames: their single pose, feet on the ring, waddling while moving. */
+.player-still {
+  position: absolute;
+  left: 8%;
+  bottom: 5%;
+  width: 84%;
+  height: 92%;
+  object-fit: contain;
+  object-position: 50% 100%;
+  transform-origin: 50% 100%;
+}
+.player-still.is-walking { animation: player-waddle 0.5s ease-in-out infinite; }
+@keyframes player-waddle {
+  0%, 100% { transform: rotate(-7deg) translateY(0); }
+  25% { transform: rotate(0deg) translateY(-3px); }
+  50% { transform: rotate(7deg) translateY(0); }
+  75% { transform: rotate(0deg) translateY(-3px); }
+}
 @media (prefers-reduced-motion: reduce) {
-  .player-strip { animation: none; }
+  .player-strip, .player-still.is-walking { animation: none; }
 }

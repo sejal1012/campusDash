@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import Map, { Layer, Source, type MapMouseEvent, type MapRef } from 'react-map-gl/mapbox'
 import { CONFIG, MAP_CONFIG } from '../config'
 import type { Creature, LngLat, PlayerFix, Stop } from '../types'
+import type { Character } from '../characters'
 import { CreatureMarkers } from './CreatureMarkers'
 import { applyCartoonStyle } from './cartoonStyle'
 import { circleRing } from '../location/geo'
@@ -25,12 +26,14 @@ export interface GameMapProps {
   freeCamera?: boolean
   /** True once GPS has failed (denied/unavailable): stop waiting and open on campus. */
   gpsFailed?: boolean
+  /** The UBMon chosen on the start screen. */
+  character?: Character
 }
 
 const TOKEN = import.meta.env.VITE_MAPBOX_TOKEN as string | undefined
 
 /** Presentational map: no store, no game logic. */
-export function GameMap({ player, stops, creatures, collectedIds, targetId, hintLevel, onCreatureTap, onMapTap, bottomInsetPx = 96, heading = null, freeCamera = false, gpsFailed = false }: GameMapProps) {
+export function GameMap({ player, stops, creatures, collectedIds, targetId, hintLevel, onCreatureTap, onMapTap, bottomInsetPx = 96, heading = null, freeCamera = false, gpsFailed = false, character }: GameMapProps) {
   const mapRef = useRef<MapRef>(null)
   const [following, setFollowing] = useState(true)
   const playerPos = player?.pos ?? null
@@ -145,7 +148,7 @@ export function GameMap({ player, stops, creatures, collectedIds, targetId, hint
         )}
         <StopPins stops={stops} collectedIds={collectedIds} targetId={targetId} hintLevel={hintLevel} />
         <CreatureMarkers creatures={creatures} player={playerPos} onCreatureTap={onCreatureTap} />
-        {playerPos && <PlayerMarker pos={playerPos} heading={heading} onFrame={followAvatar} />}
+        {playerPos && <PlayerMarker pos={playerPos} heading={heading} character={character} onFrame={followAvatar} />}
       </Map>
 
       {/* Navy haze over the horizon. No backdrop-filter. */}

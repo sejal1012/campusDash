@@ -1,18 +1,21 @@
 import { useEffect, useRef, type CSSProperties } from 'react'
+import { CHARACTERS, carouselSlot } from '../characters'
 import './start.css'
 
 const A = '/start/'
 
-type Dance = 'sway' | 'hop' | 'groove' | 'step' | 'wobble'
-
-/** Arc of mascots behind the ring: x = center (% of stage width), y = feet (% from stage bottom), w = width %. */
-const MASCOTS: Array<{ src: string; alt: string; x: number; y: number; w: number; z: number; dance: Dance; phase: number }> = [
-  { src: 'mascot-winter.webp', alt: 'Winter UBMon', x: 12, y: 49, w: 19, z: 1, dance: 'sway', phase: 0 },
-  { src: 'mascot-football.webp', alt: 'Football UBMon', x: 30, y: 42, w: 22, z: 2, dance: 'hop', phase: 0.15 },
-  { src: 'mascot-guide.webp', alt: 'Guide UBMon', x: 50, y: 37, w: 27, z: 3, dance: 'groove', phase: 0 },
-  { src: 'mascot-basketball.webp', alt: 'Basketball UBMon', x: 71, y: 42, w: 23, z: 2, dance: 'step', phase: 0.3 },
-  { src: 'mascot-scientist.webp', alt: 'Scientist UBMon', x: 88.5, y: 49, w: 20, z: 1, dance: 'wobble', phase: 0.45 },
-]
+/**
+ * Carousel slots around the ring, by offset from the selected mascot (-2..2).
+ * x = centre (% of stage width), y = feet (% from stage bottom), w = width %.
+ */
+const SLOTS: Record<number, { x: number; y: number; w: number; z: number }> = {
+  [-2]: { x: 12, y: 49, w: 19, z: 1 },
+  [-1]: { x: 30, y: 42, w: 22, z: 2 },
+  0: { x: 50, y: 37, w: 28, z: 3 },
+  1: { x: 70, y: 42, w: 22, z: 2 },
+  2: { x: 88, y: 49, w: 19, z: 1 },
+}
+const PHASES = [0, 0.15, 0, 0.3, 0.45]
 
 const FALLING_LEAVES = [
   { left: 4, delay: 0, dur: 9, dx: 120, color: '#e2541c' },
@@ -35,9 +38,55 @@ const SPARKLES = [
 
 const depth = (d: number) => ({ '--d': d }) as CSSProperties
 
-/** Animated, layered title screen. Tilt the phone (or move the mouse) for parallax depth. */
-export function StartScreen({ onStart }: { onStart: () => void }) {
+interface Props {
+  characterId: string
+  onSelect: (id: string) => void
+  onStart: () => void
+}
+
+/**
+ * Animated, layered title screen with a character picker: the mascots rotate around the ring
+ * (swipe, arrows, arrow keys, or tap one) and the one in front is the player's UBMon.
+ */
+export function StartScreen({ characterId, onSelect, onStart }: Props) {
   const root = useRef<HTMLDivElement>(null)
+  const selected = Math.max(0, CHARACTERS.findIndex((c) => c.id === characterId))
+  const current = CHARACTERS[selected]
+  // Track the latest pick in a ref so several quick taps each move one step (before React re-renders).
+  const selectedRef = useRef(selected)
+  useEffect(() => {
+    selectedRef.current = selected
+  }, [selected])
+  const rotate = (step: number) => {
+    const n = CHARACTERS.length
+    selectedRef.current = (selectedRef.current + step + n) % n
+    onSelect(CHARACTERS[selectedRef.current].id)
+  }
+  const rotateRef = useRef(rotate)
+  useEffect(() => {
+    rotateRef.current = rotate
+  })
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'ArrowLeft') rotateRef.current(-1)
+      if (e.key === 'ArrowRight') rotateRef.current(1)
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [])
+
+  // Swipe across the stage to rotate.
+  const swipeStart = useRef<number | null>(null)
+  const onStagePointerDown = (e: React.PointerEvent) => {
+    swipeStart.current = e.clientX
+  }
+  const onStagePointerUp = (e: React.PointerEvent) => {
+    if (swipeStart.current === null) return
+    const dx = e.clientX - swipeStart.current
+    swipeStart.current = null
+    if (Math.abs(dx) > 40) rotate(dx < 0 ? 1 : -1)
+  }
 
   // Parallax: pointer on desktop, tilt where the browser allows it without a prompt (Android).
   useEffect(() => {
@@ -100,7 +149,7 @@ export function StartScreen({ onStart }: { onStart: () => void }) {
         </header>
 
         {/* Stage: fixed aspect so the mascots, ring and buffalo keep their arrangement on every phone */}
-        <div className="ss-par ss-stage" style={depth(9)}>
+        <div className="ss-par ss-stage" style={depth(9)} onPointerDown={onStagePointerDown} onPointerUp={onStagePointerUp}>
           <div className="ss-ring" aria-hidden="true">
             <svg viewBox="0 0 400 130" className="ss-ring-svg">
               <defs>
@@ -121,22 +170,32 @@ export function StartScreen({ onStart }: { onStart: () => void }) {
             <img src={`${A}buffalo.webp`} alt="" className="ss-buffalo" />
           </div>
 
-          {MASCOTS.map((m, i) => (
-            <div
-              key={m.src}
-              className="ss-mascot"
-              style={{ left: `${m.x - m.w / 2}%`, bottom: `${m.y}%`, width: `${m.w}%`, zIndex: m.z, animationDelay: `${0.35 + i * 0.12}s` }}
-            >
-              <span className={`ss-shadow ss-shadow-${m.dance}`} style={{ animationDelay: `${1.1 + i * 0.12 + m.phase}s` }} />
-              <img
-                src={`${A}${m.src}`}
-                alt={m.alt}
-                className={`ss-dance ss-dance-${m.dance}`}
-                style={{ animationDelay: `${1.1 + i * 0.12 + m.phase}s` }}
-                draggable={false}
-              />
-            </div>
-          ))}
+          {CHARACTERS.map((c, i) => {
+            const slot = carouselSlot(i, selected)
+            const s = SLOTS[slot]
+            const delay = 1.1 + i * 0.12 + PHASES[i]
+            return (
+              <button
+                type="button"
+                key={c.id}
+                className={`ss-mascot${slot === 0 ? ' is-selected' : ''}`}
+                aria-label={slot === 0 ? `${c.name}, selected` : `Choose ${c.name}`}
+                aria-pressed={slot === 0}
+                onClick={() => slot !== 0 && onSelect(c.id)}
+                style={{ left: `${s.x - s.w / 2}%`, bottom: `${s.y}%`, width: `${s.w}%`, zIndex: s.z, animationDelay: `${0.35 + i * 0.12}s` }}
+              >
+                <span className={`ss-shadow ss-shadow-${c.dance}`} style={{ animationDelay: `${delay}s` }} />
+                <img src={c.still} alt="" className={`ss-dance ss-dance-${c.dance}`} style={{ animationDelay: `${delay}s` }} draggable={false} />
+              </button>
+            )
+          })}
+
+          <button type="button" className="ss-arrow ss-arrow-l" aria-label="Previous UBMon" onClick={() => rotate(-1)}>
+            <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path d="M15 5l-7 7 7 7" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" /></svg>
+          </button>
+          <button type="button" className="ss-arrow ss-arrow-r" aria-label="Next UBMon" onClick={() => rotate(1)}>
+            <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path d="M9 5l7 7-7 7" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" /></svg>
+          </button>
 
           {SPARKLES.map((s, i) => (
             <span key={i} className="ss-sparkle" style={{ left: `${s.left}%`, top: `${s.top}%`, width: s.size, height: s.size, animationDelay: `${s.delay}s` }} aria-hidden="true" />
@@ -144,8 +203,12 @@ export function StartScreen({ onStart }: { onStart: () => void }) {
         </div>
 
         <footer className="ss-footer">
+          <div className="ss-pick" aria-live="polite">
+            <span className="ss-pick-hint">Choose your UBMon</span>
+            <span key={current.id} className="ss-pick-name">{current.name}</span>
+          </div>
           <button type="button" onClick={onStart} className="ss-start">
-            <span className="ss-start-label">Start the Challenge</span>
+            <span className="ss-start-label">Start</span>
             <svg viewBox="0 0 24 24" width="26" height="26" aria-hidden="true">
               <path d="M7 4.5v15l12-7.5z" fill="currentColor" />
             </svg>

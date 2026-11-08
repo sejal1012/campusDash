@@ -10,6 +10,7 @@ import { DexChip, HintCard, MissionCard } from './hud/Hud'
 import { AppShell } from './layout/AppShell'
 import { usePlayerPosition } from './location/usePlayerPosition'
 import { StartScreen } from './screens/StartScreen'
+import { getCharacter, loadCharacterId, saveCharacterId } from './characters'
 import type { Creature, Stop } from './types'
 
 const stops = stopsData.stops as Stop[]
@@ -28,6 +29,7 @@ export default function App() {
   const [message, setMessage] = useState<string | null>(null)
   // Null until the player taps Start. The stopwatch and GPS only run after that.
   const [startedAt, setStartedAt] = useState<number | null>(null)
+  const [characterId, setCharacterId] = useState(loadCharacterId)
   const [now, setNow] = useState(Date.now())
   useEffect(() => {
     const id = setInterval(() => setNow(Date.now()), 250)
@@ -45,6 +47,11 @@ export default function App() {
     return (
       <AppShell>
         <StartScreen
+          characterId={characterId}
+          onSelect={(id) => {
+            setCharacterId(id)
+            saveCharacterId(id)
+          }}
           onStart={() => {
             setStartedAt(Date.now())
             setNow(Date.now())
@@ -68,6 +75,7 @@ export default function App() {
             onMapTap={DEBUG && teleportMode ? (pos) => injectFix(pos) : undefined}
             bottomInsetPx={112}
             heading={heading}
+            character={getCharacter(characterId)}
             freeCamera={DEBUG}
             gpsFailed={status === 'denied' || status === 'unavailable'}
           />
