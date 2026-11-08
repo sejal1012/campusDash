@@ -6,7 +6,7 @@
  *   .reda-emote  emotion motion (hop, tilt, sink, celebrate…), restarted on each reaction
  *   head SVG     face from RedaExpressions
  */
-import { useMemo, useRef, useState, type CSSProperties, type KeyboardEvent, type PointerEvent } from 'react'
+import { useEffect, useMemo, useRef, useState, type CSSProperties, type KeyboardEvent, type PointerEvent } from 'react'
 import { RedaFace, faceFor } from './RedaExpressions'
 import { useRedaState } from './useRedaState'
 import { useVoiceInteraction } from './useVoiceInteraction'
@@ -40,6 +40,12 @@ export function RedaAssistant({ targetName = null, bottomPx = 168, hidden = fals
   const voice = useVoiceInteraction(reda, { targetName, levelElRef })
   // Listen even while hidden: 'run-started' fires in the same moment Reda appears.
   useRedaNarration(reda)
+
+  // When the run starts (Reda appears), connect in the background so the first hold is instant.
+  const prewarm = voice.prewarm
+  useEffect(() => {
+    if (!hidden) void prewarm()
+  }, [hidden]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const { interaction } = reda
   const { emotion, key, seed } = reda.emotion

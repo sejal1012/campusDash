@@ -44,8 +44,8 @@ const ANSWER_END_GRACE_MS = 1_500
  * It plays muted, and Reda only starts listening once it's over: if no greeting starts within
  * GREETING_START_MS there isn't one; a quiet gap of GREETING_GAP_MS ends it; GREETING_MAX_MS caps it.
  */
-const GREETING_START_MS = 2_500
-const GREETING_GAP_MS = 700
+const GREETING_START_MS = 1_500
+const GREETING_GAP_MS = 500
 const GREETING_MAX_MS = 12_000
 /** Peak mic level below this means the hold was silent. */
 const SILENCE_LEVEL = 0.03
@@ -293,21 +293,29 @@ export function useVoiceInteraction(reda: RedaControls, { targetName, levelElRef
     scheduleSessionClose()
   }
 
-  const ensureSession = (): Promise<Session | null> => {
+  /**
+   * Opens the live connection. `quiet` (background pre-connect): failures are only logged,
+   * unless the player has started holding Reda in the meantime.
+   */
+  const ensureSession = (quiet = false): Promise<Session | null> => {
     if (session.current) return Promise.resolve(session.current)
     if (connecting.current) return connecting.current
+    const report = (kind: ErrorKind) => {
+      if (quiet && !holding.current) console.info(`[Reda] background connect failed: ${kind}`)
+      else fail(kind)
+    }
     connecting.current = (async () => {
       try {
         try {
           const probe = await navigator.mediaDevices.getUserMedia({ audio: true })
           probe.getTracks().forEach((t) => t.stop())
         } catch {
-          fail('mic')
+          report('mic')
           return null
         }
         const token = await fetchGuideToken()
         if (!token?.conversationToken && !token?.signedUrl) {
-          fail('offline')
+          report('offline')
           return null
         }
         const callbacks = {
@@ -357,7 +365,7 @@ export function useVoiceInteraction(reda: RedaControls, { targetName, levelElRef
         return s
       } catch (err) {
         console.warn('Reda could not start a voice session', err)
-        fail('connect')
+        report('connect')
         return null
       } finally {
         connecting.current = null
@@ -492,5 +500,21 @@ export function useVoiceInteraction(reda: RedaControls, { targetName, levelElRef
     }
   }, [endSession])
 
-  return { bubble, micLive, pressStart, pressEnd, pressCancel, dismissBubble }
+  /**
+   * Connect in the background (e.g. when the run starts) so the guide's greeting is over before
+   * the player first holds Reda. Only if the mic is already allowed: no surprise permission prompt.
+   */
+  const prewarm = async () => {
+    if (session.current || connecting.current) return
+    try {
+      const mic = await navigator.permissions?.query({ name: 'microphone' as PermissionName })
+      if (mic?.state !== 'granted') return
+    } catch {
+      return // permission state unknown (older browsers): connect on first hold instead
+    }
+    const s = await ensureSession(true)
+    if (s && !holding.current) scheduleSessionClose()
+  }
+
+  return { bubble, micLive, pressStart, pressEnd, pressCancel, dismissBubble, prewarm }
 }
