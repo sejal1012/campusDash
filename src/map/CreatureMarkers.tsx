@@ -6,22 +6,24 @@ import { distanceM } from '../location/geo'
 interface Props {
   creatures: Creature[]
   player: LngLat | null
+  /** Ids of stops already reached. Their creatures show in colour, the rest grey. */
+  collectedIds: string[]
   onCreatureTap: (id: string) => void
   /** Show every creature on the map, even far away (placement/preview). Default: only near the player. */
   showAll?: boolean
 }
 
-function Sprite({ art, name }: { art: string; name: string }) {
+function Sprite({ art, name, unlocked }: { art: string; name: string; unlocked: boolean }) {
   return (
     <div className="relative flex flex-col items-center">
-      <img src={art} alt={name} width={56} height={56} draggable={false} className="select-none drop-shadow-[0_3px_3px_rgba(0,0,0,0.45)]" />
+      <img src={art} alt={name} width={56} height={56} draggable={false} className={`select-none transition-[filter] duration-500 ${unlocked ? 'drop-shadow-[0_3px_3px_rgba(0,0,0,0.45)]' : 'opacity-70 grayscale brightness-90'}`} />
       <div className="-mt-1 h-1.5 w-8 rounded-full bg-black/30" />
     </div>
   )
 }
 
 /** Visible within creatureVisibleM. Tappable (with chip) within creatureCatchM. */
-export function CreatureMarkers({ creatures, player, onCreatureTap, showAll = false }: Props) {
+export function CreatureMarkers({ creatures, player, collectedIds, onCreatureTap, showAll = false }: Props) {
   if (!player && !showAll) return null
   return (
     <>
@@ -44,7 +46,7 @@ export function CreatureMarkers({ creatures, player, onCreatureTap, showAll = fa
                   Tap to catch
                 </button>
               )}
-              <Sprite art={c.art} name={c.name} />
+              <Sprite art={c.art} name={c.name} unlocked={collectedIds.includes(c.stopId)} />
             </div>
           </Marker>
         )
