@@ -1,20 +1,19 @@
 // TEMPORARY demo page for the map module. Local state only (no store).
 // Real screens and game logic live elsewhere (see CLAUDE.md section 5).
 import { useEffect, useMemo, useState } from 'react'
-import creaturesData from './data/creatures.mock.json'
-import stopsData from './data/stops.mock.json'
+import { ALL_LOCATIONS, toCreature, toStop } from './game/locations'
+import { CONFIG } from './config'
 import { DebugOverlay } from './map/DebugOverlay'
 import { GameMap } from './map/GameMap'
 import { distanceM } from './location/geo'
 import { DexChip, HintCard, MissionCard } from './hud/Hud'
+import { ArrivalCelebration } from './hud/ArrivalCelebration'
 import { AppShell } from './layout/AppShell'
 import { usePlayerPosition } from './location/usePlayerPosition'
 import { StartScreen } from './screens/StartScreen'
 import { getCharacter, loadCharacterId, saveCharacterId } from './characters'
 import type { Creature, Stop } from './types'
 
-const stops = stopsData.stops as Stop[]
-const creatures = creaturesData.creatures as Creature[]
 const DEBUG = new URLSearchParams(window.location.search).get('debug') === '1'
 
 const STATUS_TEXT: Record<string, string> = {
@@ -24,6 +23,9 @@ const STATUS_TEXT: Record<string, string> = {
 }
 
 export default function App() {
+  // The player must find every location to finish.
+  const [{ stops, creatures }] = useState(() => ({ stops: ALL_LOCATIONS.map(toStop), creatures: ALL_LOCATIONS.map(toCreature) }))
+  const [arrivedId, setArrivedId] = useState<string | null>(null)
   const [collected, setCollected] = useState<string[]>([])
   const [hintLevel, setHintLevel] = useState<1 | 2 | 3>(1)
   const [message, setMessage] = useState<string | null>(null)
@@ -39,9 +41,34 @@ export default function App() {
   const [teleportMode, setTeleportMode] = useState(false)
   const { fix, status, offCampus, heading, injectFix, resumeGps } = usePlayerPosition({ stops, relaxAccuracy: DEBUG, enabled: startedAt !== null })
 
-  const target = useMemo(() => stops.find((s) => !collected.includes(s.id)) ?? null, [collected])
+  // The mission points at the nearest stop you have not found yet. It only switches when another
+  // stop is clearly closer (30 m), so the text does not flicker while you walk.
+  const [targetId, setTargetId] = useState<string | null>(null)
+  useEffect(() => {
+    const left = stops.filter((s) => !collected.includes(s.id) && s.coords)
+    if (left.length === 0) return setTargetId(null)
+    if (!fix) return setTargetId((cur) => (cur && left.some((s) => s.id === cur) ? cur : left[0].id))
+    const dist = (s: (typeof left)[number]) => distanceM(fix.pos, s.coords!)
+    const nearest = left.reduce((a, b) => (dist(b) < dist(a) ? b : a))
+    setTargetId((cur) => {
+      const current = left.find((s) => s.id === cur)
+      return current && dist(current) - dist(nearest) <= 30 ? current.id : nearest.id
+    })
+  }, [fix, stops, collected])
+  const target = useMemo(() => stops.find((s) => s.id === targetId) ?? null, [stops, targetId])
   const banner = STATUS_TEXT[status] ?? (offCampus ? 'Walk mode works on UB North Campus.' : null)
   const toTarget = fix && target?.coords ? distanceM(fix.pos, target.coords) : null
+
+  // Reaching any not-yet-found stop (within arrivalRadiusM) unlocks it and plays the celebration.
+  useEffect(() => {
+    if (!fix || arrivedId) return
+    const hit = stops.find((st) => !collected.includes(st.id) && st.coords && distanceM(fix.pos, st.coords) <= CONFIG.arrivalRadiusM)
+    if (hit) {
+      setCollected((c) => [...c, hit.id])
+      setArrivedId(hit.id)
+    }
+  }, [fix, stops, collected, arrivedId])
+  const arrivedStop = stops.find((s) => s.id === arrivedId) ?? null
 
   if (startedAt === null) {
     return (
@@ -66,11 +93,8 @@ export default function App() {
       <div className="relative h-full">
           <GameMap
             player={fix}
-            stops={stops}
             creatures={creatures}
             collectedIds={collected}
-            targetId={target?.id ?? null}
-            hintLevel={hintLevel}
             onCreatureTap={(id) => setMessage(`Tapped creature ${id} (demo only)`)}
             onMapTap={DEBUG && teleportMode ? (pos) => injectFix(pos) : undefined}
             bottomInsetPx={112}
@@ -95,6 +119,15 @@ export default function App() {
             {message && <div className="rounded-2xl bg-[#005bbb] px-4 py-2 text-sm">{message}</div>}
           </div>
 
+          {arrivedStop && (
+            <ArrivalCelebration
+              placeName={arrivedStop.name}
+              creatureId={arrivedStop.creatureId}
+              creatureName={creatures.find((c) => c.stopId === arrivedStop.id)?.name ?? arrivedStop.creatureId}
+              onContinue={() => setArrivedId(null)}
+            />
+          )}
+
           {DEBUG && <DebugOverlay fix={fix} status={status} targetPos={target?.coords ?? null} hintLevel={hintLevel}
               teleportMode={teleportMode}
               onToggleTeleport={() => {
@@ -110,10 +143,17 @@ export default function App() {
                 <button type="button" onClick={() => setHintLevel((h) => ((h % 3) + 1) as 1 | 2 | 3)} className="min-h-11 rounded-xl bg-[#005bbb] px-3 text-xs font-semibold">
                   Hint level {hintLevel}
                 </button>
-                <button type="button" disabled={!target} onClick={() => target && setCollected((c) => [...c, target.id])} className="min-h-11 rounded-xl bg-[#3ddc97] px-3 text-xs font-semibold text-[#0b1b33] disabled:opacity-40">
+                <button type="button" disabled={!target} onClick={() => {
+                  if (!target) return
+                  setCollected((c) => [...c, target.id])
+                  setArrivedId(target.id)
+                }} className="min-h-11 rounded-xl bg-[#3ddc97] px-3 text-xs font-semibold text-[#0b1b33] disabled:opacity-40">
                   Collect target
                 </button>
-                <button type="button" onClick={() => setCollected([])} className="min-h-11 rounded-xl border border-white/15 bg-[#0b1b33] px-3 text-xs font-semibold">
+                <button type="button" onClick={() => {
+                  setCollected([])
+                  setArrivedId(null)
+                }} className="min-h-11 rounded-xl border border-white/15 bg-[#0b1b33] px-3 text-xs font-semibold">
                   Reset
                 </button>
               </div>

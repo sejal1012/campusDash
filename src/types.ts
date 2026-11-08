@@ -16,7 +16,7 @@ export interface Creature {
   stopId: string
   coords: LngLat
   art: string
-  question: { text: string; options: string[]; answerIndex: number }
+  question?: { text: string; options: string[]; answerIndex: number } // quiz lives in data/questions.json
 }
 
 export interface PlayerFix {
