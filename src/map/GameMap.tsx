@@ -144,7 +144,7 @@ export function GameMap({ player, stops, creatures, collectedIds, targetId, hint
           </Source>
         )}
         <StopPins stops={stops} collectedIds={collectedIds} targetId={targetId} hintLevel={hintLevel} />
-        <CreatureMarkers creatures={creatures} player={playerPos} onCreatureTap={onCreatureTap} />
+        <CreatureMarkers creatures={creatures} player={playerPos} onCreatureTap={onCreatureTap} showAll />
         {playerPos && <PlayerMarker pos={playerPos} heading={heading} onFrame={followAvatar} />}
       </Map>
 

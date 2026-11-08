@@ -1,18 +1,15 @@
 // TEMPORARY demo page for the map module. Local state only (no store).
 // Real screens and game logic live elsewhere (see CLAUDE.md section 5).
 import { useEffect, useMemo, useRef, useState } from 'react'
-import creaturesData from './data/creatures.mock.json'
-import stopsData from './data/stops.mock.json'
+import { ALL_LOCATIONS, toCreature, toStop } from './game/locations'
+import { pickRandom } from './game/pickLocations'
+import { CONFIG } from './config'
 import { DebugOverlay } from './map/DebugOverlay'
 import { GameMap } from './map/GameMap'
 import { distanceM } from './location/geo'
 import { DexChip, HintCard, MissionCard } from './hud/Hud'
 import { AppShell } from './layout/AppShell'
 import { usePlayerPosition } from './location/usePlayerPosition'
-import type { Creature, Stop } from './types'
-
-const stops = stopsData.stops as Stop[]
-const creatures = creaturesData.creatures as Creature[]
 const DEBUG = new URLSearchParams(window.location.search).get('debug') === '1'
 
 const STATUS_TEXT: Record<string, string> = {
@@ -22,6 +19,11 @@ const STATUS_TEXT: Record<string, string> = {
 }
 
 export default function App() {
+  // New random set of stops every time the page opens.
+  const [{ stops, creatures }] = useState(() => {
+    const picked = pickRandom(ALL_LOCATIONS, CONFIG.stopsPerRun)
+    return { stops: picked.map(toStop), creatures: picked.map(toCreature) }
+  })
   const [collected, setCollected] = useState<string[]>([])
   const [hintLevel, setHintLevel] = useState<1 | 2 | 3>(1)
   const [message, setMessage] = useState<string | null>(null)
@@ -35,7 +37,7 @@ export default function App() {
   const [teleportMode, setTeleportMode] = useState(false)
   const { fix, status, offCampus, heading, injectFix, resumeGps } = usePlayerPosition({ stops, relaxAccuracy: DEBUG })
 
-  const target = useMemo(() => stops.find((s) => !collected.includes(s.id)) ?? null, [collected])
+  const target = useMemo(() => stops.find((s) => !collected.includes(s.id)) ?? null, [stops, collected])
   const banner = STATUS_TEXT[status] ?? (offCampus ? 'Walk mode works on UB North Campus.' : null)
   const toTarget = fix && target?.coords ? distanceM(fix.pos, target.coords) : null
 
