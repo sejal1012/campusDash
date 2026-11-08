@@ -81,6 +81,25 @@ export function startMusic() {
   if (!muted) play()
 }
 
+const UNLOCK_EVENTS = ['pointerdown', 'keydown', 'touchend'] as const
+let waitingForTap = false
+
+/**
+ * Start the music as soon as the browser allows it: right away if autoplay is permitted,
+ * otherwise on the player's first tap or key press anywhere (browsers block sound before that).
+ */
+export function startMusicWhenAllowed() {
+  startMusic()
+  if (waitingForTap) return
+  waitingForTap = true
+  const onTap = () => {
+    UNLOCK_EVENTS.forEach((t) => window.removeEventListener(t, onTap, true))
+    waitingForTap = false
+    if (!muted) play()
+  }
+  UNLOCK_EVENTS.forEach((t) => window.addEventListener(t, onTap, true))
+}
+
 /** Lower the music while Reda talks or listens. */
 export function duckMusic(value: boolean) {
   if (ducked === value) return
@@ -104,6 +123,11 @@ export function setMusicMuted(value: boolean) {
     if (value) window.setTimeout(() => muted && audio?.pause(), FADE_S * 1000 + 50)
   }
   listeners.forEach((l) => l())
+}
+
+/** True while the track is actually playing. */
+export function isMusicPlaying() {
+  return !!audio && !audio.paused
 }
 
 export function isMusicMuted() {

@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState, type CSSProperties } from 'react'
 import { CHARACTERS, carouselSlot } from '../characters'
+import { MusicToggle } from '../hud/Hud'
+import { startMusicWhenAllowed } from '../audio/bgMusic'
 import './start.css'
 
 const A = '/start/'
@@ -132,8 +134,14 @@ export function StartScreen({ characterId, onSelect, onLaunch, onStart }: Props)
     }
   }, [])
 
+  // Background music plays on the start screen (from the first tap if the browser blocks autoplay).
+  useEffect(() => startMusicWhenAllowed(), [])
+
   return (
     <div ref={root} className={`ss${leaving ? ' ss-leaving' : ''}`} aria-busy={leaving}>
+      <div className="absolute right-3 top-[max(0.75rem,env(safe-area-inset-top))] z-30">
+        <MusicToggle />
+      </div>
       {/* Far: campus scene, slowly drifting */}
       <div className="ss-par ss-bg" style={depth(-6)}>
         <img src={`${A}campus.webp`} alt="" className="ss-campus" />
