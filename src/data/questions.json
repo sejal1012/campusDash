@@ -1,0 +1,105 @@
+{
+  "_note": "ALL questions are verified:false. The team must check each one on-site before launch. 'note' is for the team only and is never shown to players. Options are shuffled in the game, so the answer index here can be anything.",
+  "stops": [
+    {
+      "stopId": "lockwood",
+      "questions": [
+        { "text": "Which Lockwood floor is meant for quiet study?", "options": ["1st floor", "4th floor", "Ground floor"], "answer": 1,
+          "explain": "The 4th floor study area is designed for focused, distraction-free work.", "verified": false,
+          "note": "From UI-PLAN example. Check the floor on-site." },
+        { "text": "Who is Lockwood Library named after?", "options": ["Millard Fillmore", "Thomas B. Lockwood", "Mark Twain"], "answer": 1,
+          "explain": "It is named for Thomas B. Lockwood, a Buffalo lawyer whose gift helped build UB's library.", "verified": false,
+          "note": "Check his description (lawyer / donor)." },
+        { "text": "Lockwood is UB's main library for which subjects?", "options": ["Engineering", "Medicine", "Humanities and social sciences"], "answer": 2,
+          "explain": "Lockwood holds UB's main collections for the humanities and social sciences.", "verified": false }
+      ]
+    },
+    {
+      "stopId": "capen",
+      "questions": [
+        { "text": "Capen Hall is named after Samuel P. Capen. Who was he?", "options": ["A long-time UB chancellor", "A mayor of Buffalo", "A famous painter"], "answer": 0,
+          "explain": "Samuel P. Capen led UB as chancellor from 1922 to 1950.", "verified": false,
+          "note": "Check the years." },
+        { "text": "Which library is inside Capen Hall?", "options": ["Silverman Library", "Lockwood Library", "Music Library"], "answer": 0,
+          "explain": "The Oscar A. Silverman Library is inside Capen Hall.", "verified": false },
+        { "text": "What can students get help with at 1Capen?", "options": ["Sports tickets", "Registration, billing and financial aid", "Lost phones only"], "answer": 1,
+          "explain": "1Capen is a one-stop help center for student services like registration, billing and financial aid.", "verified": false,
+          "note": "Check what 1Capen currently covers." }
+      ]
+    },
+    {
+      "stopId": "davis",
+      "questions": [
+        { "text": "Which department calls Davis Hall home?", "options": ["Computer Science and Engineering", "Music", "Law"], "answer": 0,
+          "explain": "Davis Hall is home to UB's Department of Computer Science and Engineering.", "verified": false },
+        { "text": "Davis Hall is part of which UB school?", "options": ["School of Management", "School of Engineering and Applied Sciences", "School of Law"], "answer": 1,
+          "explain": "Davis Hall belongs to the School of Engineering and Applied Sciences.", "verified": false },
+        { "text": "About when did Davis Hall open?", "options": ["1970s", "1990s", "2010s"], "answer": 2,
+          "explain": "Davis Hall is one of the newer buildings on North Campus. It opened in the 2010s.", "verified": false,
+          "note": "Believed to be 2012. Confirm." }
+      ]
+    },
+    {
+      "stopId": "student-union",
+      "questions": [
+        { "text": "Which student group has its offices in the Student Union and funds many clubs?", "options": ["Student Association", "Faculty Senate", "Alumni Board"], "answer": 0,
+          "explain": "The Student Association runs from the Student Union and supports many student clubs.", "verified": false,
+          "note": "Check the SA office location." },
+        { "text": "What is the Student Union best known for?", "options": ["Science labs", "Food, clubs and events", "Basketball games"], "answer": 1,
+          "explain": "The Student Union is the main spot on North Campus for food, clubs and events.", "verified": false },
+        { "text": "Which campus is this Student Union on?", "options": ["South Campus", "Downtown Campus", "North Campus"], "answer": 2,
+          "explain": "This Student Union is on UB's North Campus in Amherst.", "verified": false,
+          "note": "TODO: swap for an on-site question (something players can see here)." }
+      ]
+    },
+    {
+      "stopId": "cfa",
+      "questions": [
+        { "text": "What happens in the Center for the Arts besides classes?", "options": ["Live shows and art exhibits", "Basketball games", "Car repairs"], "answer": 0,
+          "explain": "The CFA has theaters and galleries, so it hosts live shows and art exhibits.", "verified": false },
+        { "text": "Which of these is taught in the Center for the Arts?", "options": ["Nursing", "Theatre and dance", "Civil engineering"], "answer": 1,
+          "explain": "Theatre and dance classes and rehearsals take place in the CFA.", "verified": false },
+        { "text": "About when did the Center for the Arts open?", "options": ["1950s", "1990s", "2020s"], "answer": 1,
+          "explain": "The Center for the Arts opened in the 1990s.", "verified": false,
+          "note": "Believed to be 1994. Confirm." }
+      ]
+    },
+    {
+      "stopId": "alumni-arena",
+      "questions": [
+        { "text": "What is the name of UB's mascot?", "options": ["Buffalo Bill", "Victor E. Bull", "Rocky"], "answer": 1,
+          "explain": "Victor E. Bull is the UB Bulls mascot. You will see him at games here.", "verified": false },
+        { "text": "Which UB teams play home games in Alumni Arena?", "options": ["Football", "Rowing", "Basketball"], "answer": 2,
+          "explain": "Alumni Arena is home court for UB Bulls basketball.", "verified": false },
+        { "text": "About when did Alumni Arena open?", "options": ["1930s", "1980s", "2010s"], "answer": 1,
+          "explain": "Alumni Arena opened in the 1980s.", "verified": false,
+          "note": "Believed to be 1982. Also check the team plan's name 'Broadview Arena'." }
+      ]
+    },
+    {
+      "stopId": "nsc",
+      "questions": [
+        { "text": "What does NSC stand for?", "options": ["North Student Center", "Natural Sciences Complex", "New Sports Court"], "answer": 1,
+          "explain": "NSC is short for Natural Sciences Complex.", "verified": false },
+        { "text": "Which subjects are mainly taught in the NSC?", "options": ["Chemistry and biology", "Law and business", "Art and music"], "answer": 0,
+          "explain": "The NSC is home to chemistry and biological sciences.", "verified": false,
+          "note": "Check which departments are in NSC." },
+        { "text": "What kind of rooms will you find a lot of in the NSC?", "options": ["Dorm rooms", "Locker rooms", "Science labs"], "answer": 2,
+          "explain": "The NSC is packed with teaching and research labs.", "verified": false }
+      ]
+    },
+    {
+      "stopId": "clemens",
+      "questions": [
+        { "text": "Clemens Hall is named after Samuel Clemens. What is his famous pen name?", "options": ["Mark Twain", "Dr. Seuss", "Edgar Allan Poe"], "answer": 0,
+          "explain": "Samuel Clemens wrote as Mark Twain, and he once lived in Buffalo.", "verified": false },
+        { "text": "What did Mark Twain do while he lived in Buffalo?", "options": ["Coached football", "Ran a newspaper", "Built bridges"], "answer": 1,
+          "explain": "He was part owner and an editor of the Buffalo Express newspaper around 1869 to 1871.", "verified": false,
+          "note": "Check the years." },
+        { "text": "Which department is based in Clemens Hall?", "options": ["Chemistry", "Engineering", "English"], "answer": 2,
+          "explain": "Clemens Hall is home to UB's English department.", "verified": false,
+          "note": "Check current departments." }
+      ]
+    }
+  ]
+}
