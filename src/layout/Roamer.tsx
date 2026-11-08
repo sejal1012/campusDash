@@ -15,15 +15,27 @@ interface Props {
   /** Slide down from above into its spot when it first appears (the creature has just been unlocked). */
   dropIn?: boolean
   dropDelayMs?: number
+  /** Keep to this part of the parent box (percent, 0 to 100). Default: the whole box. Gives each creature its own space. */
+  xRange?: [number, number]
+  yRange?: [number, number]
 }
+
+// Only one creature talks at a time, across the whole screen. Others wait until the bubble is gone.
+let currentSpeaker: object | null = null
 
 /**
  * A caught creature wandering slowly inside its parent box (which must be position: relative).
  * Positions are in percent of the parent, so it works at any window size.
  * Every so often it says something in a speech bubble: usually its sound, sometimes a funny line.
  */
-export function Roamer({ creature, size = 84, ghost = false, dropIn = false, dropDelayMs = 0 }: Props) {
-  const start = useRef({ x: rand(5, 95), y: rand(10, 95) })
+export function Roamer({ creature, size = 84, ghost = false, dropIn = false, dropDelayMs = 0, xRange = [0, 100], yRange = [0, 100] }: Props) {
+  const rootRef = useRef<HTMLDivElement>(null)
+  const me = useRef({})
+  const rangesRef = useRef({ xRange, yRange })
+  useEffect(() => {
+    rangesRef.current = { xRange, yRange }
+  })
+  const start = useRef({ x: rand(xRange[0], xRange[1]), y: rand(yRange[0], yRange[1]) })
   const [move, setMove] = useState({ ...start.current, ms: 0, facingLeft: false, walking: false })
   const [bubble, setBubble] = useState<string | null>(null)
 
@@ -33,7 +45,8 @@ export function Roamer({ creature, size = 84, ghost = false, dropIn = false, dro
     let timer: ReturnType<typeof setTimeout>
     let at = start.current
     const wander = () => {
-      const to = { x: rand(0, 100), y: rand(0, 100) }
+      const { xRange: xr, yRange: yr } = rangesRef.current
+      const to = { x: rand(xr[0], xr[1]), y: rand(yr[0], yr[1]) }
       const ms = Math.max(3000, Math.hypot(to.x - at.x, to.y - at.y) * 120) // slow stroll
       const facingLeft = to.x < at.x
       at = to
@@ -122,22 +135,37 @@ export function Roamer({ creature, size = 84, ghost = false, dropIn = false, dro
   // Talk now and then (not in the faint background version).
   useEffect(() => {
     if (ghost) return
+    const mine = me.current
     let timer: ReturnType<typeof setTimeout>
     const speak = () => {
+      if (!rootRef.current?.offsetParent) {
+        timer = setTimeout(speak, rand(4000, 9000)) // not on screen (hidden panel): stay quiet
+        return
+      }
+      if (currentSpeaker && currentSpeaker !== mine) {
+        timer = setTimeout(speak, rand(700, 2000)) // someone else is talking: wait for them to finish
+        return
+      }
+      currentSpeaker = mine
       const funny = Math.random() < 0.3
       setBubble(pick(funny ? creature.lines : creature.sounds))
       timer = setTimeout(() => {
         setBubble(null)
+        if (currentSpeaker === mine) currentSpeaker = null
         timer = setTimeout(speak, rand(8000, 18000))
       }, funny ? 4000 : 2200)
     }
     timer = setTimeout(speak, rand(2000, 10000))
-    return () => clearTimeout(timer)
+    return () => {
+      clearTimeout(timer)
+      if (currentSpeaker === mine) currentSpeaker = null
+    }
   }, [creature, ghost])
 
   const { x, y, ms, facingLeft, walking } = move
   return (
     <div
+      ref={rootRef}
       className="absolute"
       style={{
         left: `${x}%`,

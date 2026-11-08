@@ -52,7 +52,12 @@ export function CreatureMarkers({ creatures, player, collectedIds, caughtIds, on
                   Tap to unlock
                 </button>
               )}
-              <Sprite art={c.art} name={c.name} unlocked={unlocked} />
+              {unlocked ? (
+                // Caught: the creature has gone down to the yard. Only the place name stays on the map.
+                <div className="h-2.5 w-0.5 rounded-full bg-white shadow" aria-hidden="true" />
+              ) : (
+                <Sprite art={c.art} name={c.name} unlocked={false} />
+              )}
             </div>
           </Marker>
         )

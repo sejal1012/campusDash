@@ -5,7 +5,7 @@ export const CREATURE_FX: Record<string, string[]> = {
   voltiger: ['⚡', '✨', '🔋'], // electric tiger
   snoutfin: ['💦', '🫧', '💧'], // shark pig: splashes
   pengogh: ['🎨', '🖌️', '🔵'], // painter penguin
-  dribbull: ['🏀', '💪', '🔴'], // basketball bull
+  seraphyn: ['😇', '😈', '✨'], // angelic-demonic dragon
   meowxolotl: ['🫧', '💧', '🧪'], // lab axolotl cat
   splashdrake: ['💦', '🌊', '💧'], // water dragon
 }
