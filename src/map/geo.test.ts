@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   averageFixes,
+  circleRing,
   distanceM,
   formatLngLat,
   isGoodAccuracy,
@@ -83,5 +84,13 @@ describe('averageFixes / pushRecent', () => {
 describe('formatLngLat', () => {
   it('prints [lng, lat]', () => {
     expect(formatLngLat([-78.7871234, 43.0012345])).toBe('[-78.787123, 43.001235]')
+  })
+})
+
+describe('circleRing', () => {
+  it('is closed and every point is about the radius away', () => {
+    const ring = circleRing(A, 30)
+    expect(ring[0]).toEqual(ring[ring.length - 1])
+    for (const p of ring) expect(Math.abs(distanceM(A, p) - 30)).toBeLessThan(0.5)
   })
 })

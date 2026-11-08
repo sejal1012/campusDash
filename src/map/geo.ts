@@ -52,3 +52,18 @@ export function pushRecent(fixes: PlayerFix[], fix: PlayerFix, n: number): Playe
 export function formatLngLat(p: LngLat, digits = 6): string {
   return `[${p[0].toFixed(digits)}, ${p[1].toFixed(digits)}]`
 }
+
+/**
+ * Closed ring of [lng, lat] points approximating a circle of `radiusM` meters
+ * (drawing only; use distanceM for any distance check).
+ */
+export function circleRing(center: LngLat, radiusM: number, steps = 64): LngLat[] {
+  const mPerDegLat = 111_320
+  const mPerDegLng = mPerDegLat * Math.cos((center[1] * Math.PI) / 180)
+  const ring: LngLat[] = []
+  for (let i = 0; i <= steps; i++) {
+    const a = (i / steps) * 2 * Math.PI
+    ring.push([center[0] + (radiusM * Math.cos(a)) / mPerDegLng, center[1] + (radiusM * Math.sin(a)) / mPerDegLat])
+  }
+  return ring
+}
