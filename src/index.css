@@ -160,7 +160,7 @@ body {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  [class*='anim-'], .spark, .speech-bubble { animation-duration: 1ms !important; animation-iteration-count: 1 !important; }
+  [class*='anim-'], [class*='trick-'], .fx-particle, .spark, .speech-bubble { animation-duration: 1ms !important; animation-iteration-count: 1 !important; }
 }
 
 /* Player sprite (UBMon). 56px frame; feet sit 6/128 of the frame above its bottom edge. */
@@ -230,3 +230,21 @@ body {
   65% { transform: scale(1) translateY(0); filter: grayscale(0) brightness(1.4); }
   100% { transform: scale(1) translateY(0); opacity: 1; filter: grayscale(0) brightness(1); }
 }
+
+/* Creature tricks and effect particles (see layout/Roamer.tsx) */
+@keyframes trick-hop { 0%, 100% { transform: translateY(0); } 25% { transform: translateY(-34px) scale(1.08); } 50% { transform: translateY(0) scale(1.1, 0.88); } 70% { transform: translateY(-16px); } }
+.trick-hop { animation: trick-hop 700ms ease-out; }
+@keyframes trick-spin { 0% { transform: translateY(0) rotateY(0); } 40% { transform: translateY(-22px) rotateY(360deg); } 100% { transform: translateY(0) rotateY(720deg); } }
+.trick-spin { animation: trick-spin 900ms ease-in-out; }
+@keyframes trick-runoff { 0% { transform: translateX(0); opacity: 1; } 15% { transform: translateX(-14px) translateY(-4px); } 100% { transform: translateX(420%) translateY(-6px); opacity: 0; } }
+.trick-runoff { animation: trick-runoff 1100ms ease-in both; }
+.trick-gone { visibility: hidden; }
+@keyframes trick-runin { 0% { transform: translateX(-420%); opacity: 0; } 20% { opacity: 1; } 80% { transform: translateX(8px); } 100% { transform: translateX(0); opacity: 1; } }
+.trick-runin { animation: trick-runin 900ms ease-out both; }
+
+@keyframes fx-burst {
+  0% { transform: translate(-50%, 0) scale(0.3) rotate(0deg); opacity: 0; }
+  15% { opacity: 1; }
+  100% { transform: translate(calc(-50% + var(--dx)), var(--dy)) scale(1.1) rotate(40deg); opacity: 0; }
+}
+.fx-particle { position: absolute; left: 50%; top: 35%; pointer-events: none; line-height: 1; animation: fx-burst 1300ms ease-out forwards; z-index: 5; }

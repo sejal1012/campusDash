@@ -6,7 +6,8 @@ import { pickRandom } from './game/pickLocations'
 import { DebugOverlay } from './map/DebugOverlay'
 import { GameMap } from './map/GameMap'
 import { distanceM } from './location/geo'
-import { DexChip, HintCard, MissionCard } from './hud/Hud'
+import { BottomBar, DexStrip, MissionCard } from './hud/Hud'
+import { recordCatch, resetDex } from './game/dex'
 import { ArrivalCelebration } from './hud/ArrivalCelebration'
 import { AppShell } from './layout/AppShell'
 import { usePlayerPosition } from './location/usePlayerPosition'
@@ -62,6 +63,7 @@ export default function App() {
     const creature = creatures.find((c) => c.id === creatureId)
     if (!creature || collected.includes(creature.stopId)) return
     setCollected((c) => [...c, creature.stopId])
+    recordCatch(creature.id, 'caught') // lights up the Dex and sends it to the Creature park
     setArrivedId(creature.stopId)
   }
   const arrivedStop = stops.find((s) => s.id === arrivedId) ?? null
@@ -76,6 +78,7 @@ export default function App() {
             saveCharacterId(id)
           }}
           onStart={() => {
+            resetDex() // every run starts with nothing found
             setStartedAt(Date.now())
             setNow(Date.now())
           }}
@@ -93,7 +96,7 @@ export default function App() {
             collectedIds={collected}
             onCreatureTap={unlockCreature}
             onMapTap={DEBUG && teleportMode ? (pos) => injectFix(pos) : undefined}
-            bottomInsetPx={112}
+            bottomInsetPx={108}
             heading={heading}
             character={getCharacter(characterId)}
             freeCamera={DEBUG}
@@ -102,9 +105,7 @@ export default function App() {
 
           {/* Top HUD */}
           <div className="pointer-events-none absolute inset-x-0 top-0 z-10 flex flex-col gap-3 p-4 pt-[max(1rem,env(safe-area-inset-top))]">
-            <div className="pointer-events-auto w-fit">
-              <DexChip found={collected.length} total={stops.length} />
-            </div>
+            <DexStrip />
             <MissionCard
               stopNumber={Math.min(collected.length + 1, stops.length)}
               stopCount={stops.length}
@@ -131,8 +132,10 @@ export default function App() {
               }}
             />}
 
-          {/* Bottom hint card */}
-          <div className="absolute inset-x-0 bottom-0 z-10 flex flex-col gap-2 p-4 pt-0">
+          {/* Bottom box: meters left, centered. Unlocked creatures play faintly behind it on phones. */}
+          <BottomBar targetName={target?.name ?? null} distanceM={toTarget} hintLevel={hintLevel} player={fix?.pos ?? null} targetPos={target?.coords ?? null} />
+
+          <div className="absolute inset-x-0 bottom-[6.5rem] z-10 flex flex-col gap-2 p-4 pt-0">
             {DEBUG && (
               <div className="flex gap-2">
                 <button type="button" onClick={() => setHintLevel((h) => ((h % 3) + 1) as 1 | 2 | 3)} className="min-h-11 rounded-xl bg-[#005bbb] px-3 text-xs font-semibold">
@@ -141,19 +144,20 @@ export default function App() {
                 <button type="button" disabled={!target} onClick={() => {
                   if (!target) return
                   setCollected((c) => [...c, target.id])
+                  recordCatch(target.creatureId, 'caught')
                   setArrivedId(target.id)
                 }} className="min-h-11 rounded-xl bg-[#3ddc97] px-3 text-xs font-semibold text-[#0b1b33] disabled:opacity-40">
                   Collect target
                 </button>
                 <button type="button" onClick={() => {
                   setCollected([])
+                  resetDex()
                   setArrivedId(null)
                 }} className="min-h-11 rounded-xl border border-white/15 bg-[#0b1b33] px-3 text-xs font-semibold">
                   Reset
                 </button>
               </div>
             )}
-            <HintCard hintLevel={hintLevel} targetName={target?.name ?? null} distanceM={toTarget} player={fix?.pos ?? null} targetPos={target?.coords ?? null} />
           </div>
       </div>
     </AppShell>

@@ -32,6 +32,7 @@ const TOKEN = import.meta.env.VITE_MAPBOX_TOKEN as string | undefined
 export function GameMap({ player, creatures, collectedIds, onCreatureTap, onMapTap, bottomInsetPx = 96, heading = null, freeCamera = false, gpsFailed = false, character }: GameMapProps) {
   const mapRef = useRef<MapRef>(null)
   const [following, setFollowing] = useState(true)
+  const [bearing, setBearing] = useState(0)
   const playerPos = player?.pos ?? null
 
   // Camera follows the avatar frame by frame (as it glides) until the user drags the map away.
@@ -134,6 +135,7 @@ export function GameMap({ player, creatures, collectedIds, onCreatureTap, onMapT
         onLoad={setupStyle}
         onClick={handleClick}
         onDragStart={() => setFollowing(false)}
+        onRotate={(e) => setBearing(e.viewState.bearing)}
         onError={(e) => console.error('Map error', e.error)}
         style={{ width: '100%', height: '100%' }}
       >
@@ -152,16 +154,20 @@ export function GameMap({ player, creatures, collectedIds, onCreatureTap, onMapT
         style={{ height: MAP_CONFIG.hazePx, background: `linear-gradient(to bottom, rgb(${MAP_CONFIG.hazeColor}) 0%, rgba(${MAP_CONFIG.hazeColor},0.85) 35%, rgba(${MAP_CONFIG.hazeColor},0) 100%)` }}
       />
 
+      {/* Compass: the needle shows where north is. Tap to turn the map back to north. */}
       <button
         type="button"
         aria-label="Face north"
         onClick={() => mapRef.current?.easeTo({ bearing: 0, duration: 500 })}
-        className="absolute right-4 top-[max(1rem,env(safe-area-inset-top))] flex h-12 w-12 items-center justify-center rounded-full border border-white/15 bg-[rgba(8,20,40,0.92)] text-white active:bg-[#003f87]"
+        style={{ bottom: bottomInsetPx + 60 }}
+        className="absolute right-4 flex h-12 w-12 items-center justify-center rounded-full border border-white/15 bg-[rgba(8,20,40,0.92)] text-white shadow-lg active:bg-[#003f87]"
       >
-        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#ffb02e" strokeWidth="2" strokeLinejoin="round" aria-hidden="true">
-          <circle cx="12" cy="12" r="9" />
-          <path d="M15.5 8.5l-2 5-5 2 2-5z" />
+        <svg width="30" height="30" viewBox="0 0 30 30" aria-hidden="true" style={{ transform: `rotate(${-bearing}deg)`, transition: 'transform 120ms linear' }}>
+          <path d="M15 3l5 12H10z" fill="#ff5a4d" />
+          <path d="M15 27l-5-12h10z" fill="#e7edf7" />
+          <circle cx="15" cy="15" r="1.6" fill="#0b1b33" />
         </svg>
+        <span className="pointer-events-none absolute -top-1 text-[10px] font-extrabold text-white">N</span>
       </button>
 
       <button
@@ -171,9 +177,8 @@ export function GameMap({ player, creatures, collectedIds, onCreatureTap, onMapT
         style={{ bottom: bottomInsetPx }}
         className="absolute right-4 flex h-12 w-12 items-center justify-center rounded-full border border-white/15 bg-[rgba(8,20,40,0.92)] text-white shadow-lg active:bg-[#003f87]"
       >
-        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={following ? '#ffb02e' : 'currentColor'} strokeWidth="2" strokeLinecap="round" aria-hidden="true">
-          <circle cx="12" cy="12" r="4" />
-          <path d="M12 2v4M12 18v4M2 12h4M18 12h4" />
+        <svg width="24" height="24" viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M20.5 3.5L3.8 10.6l6.5 2.3 2.3 6.5z" fill={following ? '#ffb02e' : 'none'} stroke={following ? '#ffb02e' : 'currentColor'} strokeWidth="2" strokeLinejoin="round" />
         </svg>
       </button>
     </div>
