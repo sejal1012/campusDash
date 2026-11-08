@@ -6,7 +6,7 @@ import { pickRandom } from './game/pickLocations'
 import { DebugOverlay } from './map/DebugOverlay'
 import { GameMap } from './map/GameMap'
 import { distanceM } from './location/geo'
-import { BottomBar, DexStrip, MissionCard } from './hud/Hud'
+import { ClockBadge, DexStrip, DistanceDial, MissionPill } from './hud/Hud'
 import { recordCatch, resetDex } from './game/dex'
 import { ROSTER } from './data/roster'
 import { questionsFor } from './data/questions'
@@ -17,6 +17,12 @@ import { AppShell } from './layout/AppShell'
 import { usePlayerPosition } from './location/usePlayerPosition'
 import { StartScreen } from './screens/StartScreen'
 import { getCharacter, loadCharacterId, saveCharacterId } from './characters'
+
+// Space kept free at the bottom of the map. The locate button sits here and the compass above it
+// (two 48 px buttons, 12 px apart = 108 px). The 120 px radar on the left is centered on that pair.
+// 42 puts the radar's bottom edge at 36 px, just above the Mapbox logo.
+const MAP_BOTTOM_INSET = 42
+const RADAR_BOTTOM = MAP_BOTTOM_INSET + 108 / 2 - 120 / 2
 
 // Every page load is a fresh run: forget anything saved from the last one.
 resetDex()
@@ -130,7 +136,7 @@ export default function App() {
             collectedIds={collected}
             onCreatureTap={unlockCreature}
             onMapTap={DEBUG && teleportMode ? (pos) => injectFix(pos) : undefined}
-            bottomInsetPx={108}
+            bottomInsetPx={MAP_BOTTOM_INSET}
             heading={heading}
             character={getCharacter(characterId)}
             freeCamera={DEBUG}
@@ -144,13 +150,14 @@ export default function App() {
           {/* Top HUD */}
           <div className={`pointer-events-none absolute inset-x-0 top-0 z-10 flex flex-col gap-3 p-4 pt-[max(1rem,env(safe-area-inset-top))] ${runStartedAt ? 'hud-in-top' : 'hud-hidden'}`}>
             <DexStrip />
-            <MissionCard
-              stopNumber={Math.min(collected.length + 1, stops.length)}
-              stopCount={stops.length}
-              targetName={target?.name ?? null}
-              elapsedMs={elapsedMs}
-              allFound={collected.length >= stops.length}
-            />
+            <div className="flex items-start justify-between gap-3">
+              <MissionPill
+                stopNumber={Math.min(collected.length + 1, stops.length)}
+                stopCount={stops.length}
+                targetName={target?.name ?? null}
+              />
+              <ClockBadge elapsedMs={elapsedMs} />
+            </div>
             {banner && <div className="rounded-2xl bg-[#ffb02e] px-4 py-2 text-sm font-semibold text-[#0b1b33]">{banner}</div>}
           </div>
 
@@ -175,13 +182,10 @@ export default function App() {
               }}
             />}
 
-          {/* Bottom box: meters left, centered. Unlocked creatures play faintly behind it on phones.
-              Wrapped in a full-frame layer so it can stay hidden during the opening fly-in. */}
-          <div className={`pointer-events-none absolute inset-0 z-10 ${runStartedAt ? 'hud-in-bottom' : 'hud-hidden'}`}>
-            <BottomBar allFound={collected.length >= stops.length} distanceM={toTarget} hintLevel={hintLevel} player={fix?.pos ?? null} targetPos={target?.coords ?? null} />
-          </div>
+          {/* Radar distance dial, bottom-left corner. */}
+          <DistanceDial targetName={target?.name ?? null} creatureId={target?.creatureId ?? null} distanceM={toTarget} hintLevel={hintLevel} player={fix?.pos ?? null} targetPos={target?.coords ?? null} bottomPx={RADAR_BOTTOM} />
 
-          <div className={`absolute inset-x-0 bottom-[6.5rem] z-10 flex flex-col gap-2 p-4 pt-0 ${runStartedAt ? 'hud-in-bottom' : 'hud-hidden'}`}>
+          <div className="absolute inset-x-0 bottom-[10rem] z-10 flex flex-col gap-2 p-4 pt-0">
             {DEBUG && (
               <div className="flex gap-2">
                 <button type="button" onClick={() => setHintLevel((h) => ((h % 3) + 1) as 1 | 2 | 3)} className="min-h-11 rounded-xl bg-[#005bbb] px-3 text-xs font-semibold">

@@ -121,6 +121,20 @@ body {
 @keyframes rise-in { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: none; } }
 .anim-rise { animation: rise-in 350ms ease-out both; }
 
+/* Map distance dial: a soft pop each step closer, a slow pulse when near. */
+@keyframes dial-pulse { 0% { transform: scale(1); } 35% { transform: scale(1.08); } 100% { transform: scale(1); } }
+.anim-dial-pulse { animation: dial-pulse 520ms ease-out; }
+@keyframes dial-ring { from { transform: scale(1); opacity: 0.8; } to { transform: scale(1.45); opacity: 0; } }
+.anim-dial-ring { animation: dial-ring 900ms ease-out both; }
+@keyframes dial-near { 0%, 100% { transform: scale(1); box-shadow: 0 6px 20px rgba(0,0,0,0.3), 0 0 0 0 rgba(255,176,46,0.5); } 50% { transform: scale(1.04); box-shadow: 0 6px 20px rgba(0,0,0,0.3), 0 0 0 10px rgba(255,176,46,0); } }
+.anim-dial-near { animation: dial-near 1.6s ease-in-out infinite; }
+@keyframes radar-spin { to { transform: rotate(360deg); } }
+.anim-radar { animation: radar-spin 3.2s linear infinite; }
+.anim-radar-fast { animation: radar-spin 1.3s linear infinite; }
+@media (prefers-reduced-motion: reduce) {
+  .anim-dial-pulse, .anim-dial-ring, .anim-dial-near, .anim-radar, .anim-radar-fast { animation: none; }
+}
+
 /* Side-panel roamers */
 @keyframes walk-hop { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-9px); } }
 .anim-walk { animation: walk-hop 480ms ease-in-out infinite; }
