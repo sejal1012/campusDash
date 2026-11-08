@@ -25,14 +25,11 @@ function Backdrop() {
 
 /**
  * Desktop only (1024px and up): fills the empty space on both sides of the phone frame.
- * Left: Dex progress and the creatures still to find (gray). Caught creatures roam both sides in color.
+ * Left: Dex progress, all 8 creatures (gray until unlocked, then color). Right: unlocked creatures play in the Creature park.
  */
 export function SidePanels() {
   const dex = useDex()
   const caught = ROSTER.filter((c) => dex[c.id])
-  const missing = ROSTER.filter((c) => !dex[c.id])
-  const leftRoamers = caught.filter((_, i) => i % 2 === 0)
-  const rightRoamers = caught.filter((_, i) => i % 2 === 1)
   const golds = caught.filter((c) => dex[c.id] === 'gold').length
 
   const column = 'absolute inset-y-0 flex w-[calc(50%-239px)] flex-col p-8'
@@ -66,26 +63,22 @@ export function SidePanels() {
           </div>
           {golds > 0 && <div className="mt-2 text-xs font-semibold text-[#ffb02e]">{golds} gold</div>}
 
-          {missing.length > 0 ? (
-            <>
-              <h3 className="mt-4 text-[11px] font-semibold uppercase tracking-wider text-[#b9c6dc]">Still to find</h3>
-              <ul className="mt-2 grid grid-cols-4 gap-2">
-                {missing.map((c) => (
-                  <li key={c.id} className="flex flex-col items-center rounded-2xl bg-white/5 p-1.5" title="Not caught yet">
-                    <CreatureArt id={c.id} name={c.name} size={52} look="gray" className="h-auto w-full" />
-                    <span className="text-[10px] font-semibold text-white/40">???</span>
-                  </li>
-                ))}
-              </ul>
-            </>
-          ) : (
-            <p className="mt-4 text-sm font-semibold text-[#3ddc97]">You caught them all!</p>
-          )}
+          <h3 className="mt-4 text-[11px] font-semibold uppercase tracking-wider text-[#b9c6dc]">
+            {caught.length === ROSTER.length ? 'You found them all!' : 'Your creatures'}
+          </h3>
+          <ul className="mt-2 grid grid-cols-4 gap-2">
+            {ROSTER.map((c) => {
+              const entry = dex[c.id]
+              return (
+                <li key={c.id} className="flex flex-col items-center rounded-2xl bg-white/5 p-1.5" title={entry ? c.name : 'Not found yet'}>
+                  <CreatureArt id={c.id} name={c.name} size={52} look={entry === 'gold' ? 'gold' : entry ? 'color' : 'gray'} className="h-auto w-full transition-[filter,opacity] duration-700" />
+                  <span className={`text-[10px] font-semibold ${entry ? 'text-white' : 'text-white/40'}`}>{entry ? c.name : '???'}</span>
+                </li>
+              )
+            })}
+          </ul>
         </div>
 
-        <div className="relative mt-6 flex-1" aria-hidden="true">
-          {leftRoamers.map((c) => <Roamer key={c.id} creature={c} gold={dex[c.id] === 'gold'} />)}
-        </div>
       </aside>
 
       {/* ---------- Right ---------- */}
@@ -93,7 +86,7 @@ export function SidePanels() {
         <h2 className="font-display text-xl font-bold">Creature park</h2>
         <p className="mt-1 text-sm text-[#b9c6dc]">Creatures you catch hang out here.</p>
         <div className="relative mt-6 flex-1" aria-hidden="true">
-          {rightRoamers.map((c) => <Roamer key={c.id} creature={c} gold={dex[c.id] === 'gold'} />)}
+          {caught.map((c) => <Roamer key={c.id} creature={c} gold={dex[c.id] === 'gold'} />)}
           {caught.length === 0 && (
             <div className="absolute inset-x-0 top-1/3 rounded-3xl border-2 border-dashed border-white/10 p-6 text-center text-sm text-white/40">
               Nobody here yet. Catch your first creature!
