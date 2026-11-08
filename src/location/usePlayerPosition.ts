@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { GpsStatus, LngLat, PlayerFix, Stop } from '../types'
-import { isGoodAccuracy, isOffCampus, smooth } from './geo'
+import { isGoodAccuracy, isOffCampus, nextHeading, smooth } from './geo'
 
 interface Options {
   onFix?: (fix: PlayerFix) => void
@@ -16,6 +16,8 @@ export interface PlayerPosition {
   fix: PlayerFix | null
   status: GpsStatus
   offCampus: boolean
+  /** Facing direction in degrees (0 = north), from movement. Null until the player moves. */
+  heading: number | null
   /** Feed a position through the same pipeline as GPS (debug teleport). Skips smoothing. */
   injectFix: (pos: LngLat, accuracy?: number) => void
   /** Debug: stop ignoring real GPS after a teleport. */
@@ -27,6 +29,8 @@ export function usePlayerPosition({ onFix, stops, enabled = true, relaxAccuracy 
   const [fix, setFix] = useState<PlayerFix | null>(null)
   const [status, setStatus] = useState<GpsStatus>('idle')
   const [offCampus, setOffCampus] = useState(false)
+  const [heading, setHeading] = useState<number | null>(null)
+  const headingRef = useRef<{ heading: number | null; anchor: LngLat | null }>({ heading: null, anchor: null })
 
   const onFixRef = useRef(onFix)
   const stopsRef = useRef(stops)
@@ -38,6 +42,9 @@ export function usePlayerPosition({ onFix, stops, enabled = true, relaxAccuracy 
   })
 
   const publish = useCallback((next: PlayerFix) => {
+    const h = nextHeading(headingRef.current.anchor, next.pos, headingRef.current.heading)
+    headingRef.current = h
+    setHeading(h.heading)
     setFix(next)
     setStatus('ok')
     setOffCampus(
@@ -119,6 +126,6 @@ export function usePlayerPosition({ onFix, stops, enabled = true, relaxAccuracy 
     }
   }, [enabled])
 
-  return { fix, status, offCampus, injectFix, resumeGps }
+  return { fix, status, offCampus, heading, injectFix, resumeGps }
 }
 

@@ -6,6 +6,7 @@ import {
   distanceM,
   formatLngLat,
   isGoodAccuracy,
+  nextHeading,
   isOffCampus,
   pushRecent,
   smooth,
@@ -102,5 +103,20 @@ describe('bearingDeg', () => {
     expect(bearingDeg(A, [A[0] + 0.01, A[1]])).toBeCloseTo(90, 0)
     expect(bearingDeg(A, [A[0], A[1] - 0.01])).toBeCloseTo(180, 0)
     expect(bearingDeg(A, [A[0] - 0.01, A[1]])).toBeCloseTo(270, 0)
+  })
+})
+
+describe('nextHeading', () => {
+  it('keeps the old heading until the player moves far enough', () => {
+    const r = nextHeading(A, [A[0], A[1] + 0.00001], 123)
+    expect(r.heading).toBe(123)
+    expect(r.anchor).toEqual(A)
+  })
+  it('turns to face the direction of a real move', () => {
+    const r = nextHeading(A, [A[0] + 0.001, A[1]], null)
+    expect(r.heading).toBeCloseTo(90, 0)
+  })
+  it('has no heading on the very first fix', () => {
+    expect(nextHeading(null, A, null).heading).toBeNull()
   })
 })

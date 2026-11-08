@@ -1,4 +1,6 @@
 import type { ExpressionSpecification, Map as MapboxMap } from 'mapbox-gl'
+import { addBuildings } from './buildings'
+import { installTrees } from './trees'
 
 /** Cartoon palette, matched to the concept screens (green ground, tan paths, blue-grey buildings). */
 export const CARTOON = {
@@ -8,8 +10,6 @@ export const CARTOON = {
   water: '#3f8fd6',
   road: '#e6d6ae',
   roadEdge: '#b9a577',
-  buildingLow: '#b8c7e6',
-  buildingHigh: '#8ea3d4',
   fog: '#1a3556',
   fogHigh: '#0b1b33',
 }
@@ -70,23 +70,8 @@ export function applyCartoonStyle(map: MapboxMap): void {
     }
   }
 
-  // Chunky 3D buildings: taller = darker blue, lighter roof from the vertical gradient.
-  if (!map.getLayer('3d-buildings')) {
-    map.addLayer({
-      id: '3d-buildings',
-      source: 'composite',
-      'source-layer': 'building',
-      type: 'fill-extrusion',
-      minzoom: 15,
-      paint: {
-        'fill-extrusion-color': ['interpolate', ['linear'], ['coalesce', ['get', 'height'], 12], 0, CARTOON.buildingLow, 40, CARTOON.buildingHigh],
-        'fill-extrusion-height': ['coalesce', ['get', 'height'], 12],
-        'fill-extrusion-base': ['coalesce', ['get', 'min_height'], 0],
-        'fill-extrusion-opacity': 1,
-        'fill-extrusion-vertical-gradient': true,
-      },
-    })
-  }
+  addBuildings(map)
+  installTrees(map)
 
   // Fades the horizon into navy so it meets the HUD haze.
   set(

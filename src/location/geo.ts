@@ -76,3 +76,18 @@ export function bearingDeg(a: LngLat, b: LngLat): number {
   const x = Math.cos(a[1] * rad) * Math.sin(b[1] * rad) - Math.sin(a[1] * rad) * Math.cos(b[1] * rad) * Math.cos(dLng)
   return (Math.atan2(y, x) / rad + 360) % 360
 }
+
+/**
+ * Facing direction from movement. Only updates once the player has moved `minMoveM`
+ * from the anchor, so standing still never makes the heading jitter.
+ */
+export function nextHeading(
+  anchor: LngLat | null,
+  pos: LngLat,
+  prev: number | null,
+  minMoveM = 4,
+): { heading: number | null; anchor: LngLat } {
+  if (!anchor) return { heading: prev, anchor: pos }
+  if (distanceM(anchor, pos) < minMoveM) return { heading: prev, anchor }
+  return { heading: bearingDeg(anchor, pos), anchor: pos }
+}

@@ -33,7 +33,7 @@ export default function App() {
   }, [])
 
   const [teleportMode, setTeleportMode] = useState(false)
-  const { fix, status, offCampus, injectFix, resumeGps } = usePlayerPosition({ stops, relaxAccuracy: DEBUG })
+  const { fix, status, offCampus, heading, injectFix, resumeGps } = usePlayerPosition({ stops, relaxAccuracy: DEBUG })
 
   const target = useMemo(() => stops.find((s) => !collected.includes(s.id)) ?? null, [collected])
   const banner = STATUS_TEXT[status] ?? (offCampus ? 'Walk mode works on UB North Campus.' : null)
@@ -52,6 +52,7 @@ export default function App() {
             onCreatureTap={(id) => setMessage(`Tapped creature ${id} (demo only)`)}
             onMapTap={DEBUG && teleportMode ? (pos) => injectFix(pos) : undefined}
             bottomInsetPx={112}
+            heading={heading}
             freeCamera={DEBUG}
           />
 

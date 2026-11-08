@@ -19,6 +19,8 @@ export interface GameMapProps {
   onMapTap?: (pos: LngLat) => void
   /** Px kept free at the bottom for the HUD (moves the recenter button up). */
   bottomInsetPx?: number
+  /** Facing direction in degrees (0 = north). Null hides the view cone. */
+  heading?: number | null
   /** Debug only: remove the campus bounds so you can test real GPS anywhere. */
   freeCamera?: boolean
 }
@@ -26,7 +28,7 @@ export interface GameMapProps {
 const TOKEN = import.meta.env.VITE_MAPBOX_TOKEN as string | undefined
 
 /** Presentational map: no store, no game logic. */
-export function GameMap({ player, stops, creatures, collectedIds, targetId, hintLevel, onCreatureTap, onMapTap, bottomInsetPx = 96, freeCamera = false }: GameMapProps) {
+export function GameMap({ player, stops, creatures, collectedIds, targetId, hintLevel, onCreatureTap, onMapTap, bottomInsetPx = 96, heading = null, freeCamera = false }: GameMapProps) {
   const mapRef = useRef<MapRef>(null)
   const [following, setFollowing] = useState(true)
   const playerPos = player?.pos ?? null
@@ -38,9 +40,12 @@ export function GameMap({ player, stops, creatures, collectedIds, targetId, hint
     }
   }, [playerPos, following])
 
-  const onLoad = useCallback(() => {
+  const styled = useRef(false)
+  // Runs once, as soon as the style is ready (not after every tile), so the plain map never shows.
+  const setupStyle = useCallback(() => {
     const map = mapRef.current?.getMap()
-    if (!map) return
+    if (!map || styled.current || !map.getSource('composite')) return
+    styled.current = true
     try {
       applyCartoonStyle(map)
       if (MAP_CONFIG.enableTerrain) {
@@ -94,7 +99,8 @@ export function GameMap({ player, stops, creatures, collectedIds, targetId, hint
         maxPitch={70}
         maxBounds={freeCamera ? undefined : MAP_CONFIG.maxBounds}
         attributionControl={false}
-        onLoad={onLoad}
+        onStyleData={setupStyle}
+        onLoad={setupStyle}
         onClick={handleClick}
         onDragStart={() => setFollowing(false)}
         onError={(e) => console.error('Map error', e.error)}
@@ -107,7 +113,7 @@ export function GameMap({ player, stops, creatures, collectedIds, targetId, hint
         )}
         <StopPins stops={stops} collectedIds={collectedIds} targetId={targetId} hintLevel={hintLevel} />
         <CreatureMarkers creatures={creatures} player={playerPos} onCreatureTap={onCreatureTap} />
-        {playerPos && <PlayerMarker pos={playerPos} />}
+        {playerPos && <PlayerMarker pos={playerPos} heading={heading} />}
       </Map>
 
       {/* Navy haze over the horizon. No backdrop-filter. */}
