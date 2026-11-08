@@ -15,6 +15,16 @@ export function DebugOverlay({ fix, status, targetPos, hintLevel }: Props) {
   const [capture, setCapture] = useState(false)
   const [recent, setRecent] = useState<PlayerFix[]>([])
   const [copied, setCopied] = useState(false)
+  const [count, setCount] = useState(0)
+  const [now, setNow] = useState(Date.now())
+
+  useEffect(() => {
+    if (fix) setCount((c) => c + 1)
+  }, [fix])
+  useEffect(() => {
+    const id = setInterval(() => setNow(Date.now()), 1000)
+    return () => clearInterval(id)
+  }, [])
 
   useEffect(() => {
     if (capture && fix) setRecent((r) => pushRecent(r, fix, MAP_CONFIG.captureFixes))
@@ -40,6 +50,7 @@ export function DebugOverlay({ fix, status, targetPos, hintLevel }: Props) {
       <div>{fix ? `lng, lat: ${fix.pos[0].toFixed(6)}, ${fix.pos[1].toFixed(6)}` : 'lng, lat: none yet'}</div>
       <div>accuracy: {fix ? `${Math.round(fix.accuracy)} m` : 'n/a'}</div>
       <div>status: {status}</div>
+      <div>fixes: {count}{fix ? `, last ${Math.max(0, Math.round((now - fix.timestamp) / 1000))} s ago` : ''}</div>
       <div>hint level: {hintLevel}</div>
       <div>to target: {fix && targetPos ? `${Math.round(distanceM(fix.pos, targetPos))} m` : 'n/a'}</div>
       <button

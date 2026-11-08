@@ -31,7 +31,7 @@ export default function App() {
     return () => clearInterval(id)
   }, [])
 
-  const { fix, status, offCampus, injectFix } = usePlayerPosition({ stops })
+  const { fix, status, offCampus, injectFix } = usePlayerPosition({ stops, relaxAccuracy: DEBUG })
 
   const target = useMemo(() => stops.find((s) => !collected.includes(s.id)) ?? null, [collected])
   const banner = STATUS_TEXT[status] ?? (offCampus ? 'Walk mode works on UB North Campus.' : null)
@@ -51,6 +51,7 @@ export default function App() {
             onCreatureTap={(id) => setMessage(`Tapped creature ${id} (demo only)`)}
             onMapTap={DEBUG ? (pos) => injectFix(pos) : undefined}
             bottomInsetPx={104}
+            freeCamera={DEBUG}
           />
 
           {/* Top HUD */}

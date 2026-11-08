@@ -8,6 +8,8 @@ interface Options {
   stops?: Stop[]
   /** Set false to stop watching (default true). */
   enabled?: boolean
+  /** Debug only: accept fixes of any accuracy so desktop Wi-Fi location can be tested. */
+  relaxAccuracy?: boolean
 }
 
 export interface PlayerPosition {
@@ -19,7 +21,7 @@ export interface PlayerPosition {
 }
 
 /** The only place raw browser GPS fields are read. Converts once to [lng, lat]. */
-export function usePlayerPosition({ onFix, stops, enabled = true }: Options = {}): PlayerPosition {
+export function usePlayerPosition({ onFix, stops, enabled = true, relaxAccuracy = false }: Options = {}): PlayerPosition {
   const [fix, setFix] = useState<PlayerFix | null>(null)
   const [status, setStatus] = useState<GpsStatus>('idle')
   const [offCampus, setOffCampus] = useState(false)
@@ -64,7 +66,7 @@ export function usePlayerPosition({ onFix, stops, enabled = true }: Options = {}
     const id = navigator.geolocation.watchPosition(
       ({ coords, timestamp }) => {
         if (teleported.current) return
-        if (!isGoodAccuracy(coords.accuracy)) {
+        if (!relaxAccuracy && !isGoodAccuracy(coords.accuracy)) {
           setStatus('weak')
           return
         }
@@ -81,7 +83,7 @@ export function usePlayerPosition({ onFix, stops, enabled = true }: Options = {}
       { enableHighAccuracy: true, maximumAge: 1000, timeout: 10000 },
     )
     return () => navigator.geolocation.clearWatch(id)
-  }, [enabled, publish])
+  }, [enabled, publish, relaxAccuracy])
 
   // Keep the screen on while watching. Re-acquire after the tab becomes visible.
   useEffect(() => {

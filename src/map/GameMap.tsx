@@ -18,12 +18,14 @@ export interface GameMapProps {
   onMapTap?: (pos: LngLat) => void
   /** Px kept free at the bottom for the HUD (moves the recenter button up). */
   bottomInsetPx?: number
+  /** Debug only: remove the campus bounds so you can test real GPS anywhere. */
+  freeCamera?: boolean
 }
 
 const TOKEN = import.meta.env.VITE_MAPBOX_TOKEN as string | undefined
 
 /** Presentational map: no store, no game logic. */
-export function GameMap({ player, stops, creatures, collectedIds, targetId, hintLevel, onCreatureTap, onMapTap, bottomInsetPx = 96 }: GameMapProps) {
+export function GameMap({ player, stops, creatures, collectedIds, targetId, hintLevel, onCreatureTap, onMapTap, bottomInsetPx = 96, freeCamera = false }: GameMapProps) {
   const mapRef = useRef<MapRef>(null)
   const [following, setFollowing] = useState(true)
   const playerPos = player?.pos ?? null
@@ -52,7 +54,7 @@ export function GameMap({ player, stops, creatures, collectedIds, targetId, hint
           type: 'fill-extrusion',
           minzoom: 15,
           paint: {
-            'fill-extrusion-color': '#c9d6e8',
+            'fill-extrusion-color': MAP_CONFIG.buildingColor,
             'fill-extrusion-height': ['get', 'height'],
             'fill-extrusion-base': ['get', 'min_height'],
             'fill-extrusion-opacity': 0.8,
@@ -103,12 +105,12 @@ export function GameMap({ player, stops, creatures, collectedIds, targetId, hint
       <Map
         ref={mapRef}
         mapboxAccessToken={TOKEN}
-        mapStyle="mapbox://styles/mapbox/satellite-streets-v12"
+        mapStyle={MAP_CONFIG.style}
         initialViewState={{ longitude: MAP_CONFIG.center[0], latitude: MAP_CONFIG.center[1], zoom: MAP_CONFIG.zoom, pitch: MAP_CONFIG.pitch, bearing: 0 }}
-        minZoom={MAP_CONFIG.minZoom}
+        minZoom={freeCamera ? 3 : MAP_CONFIG.minZoom}
         maxZoom={MAP_CONFIG.maxZoom}
         maxPitch={70}
-        maxBounds={MAP_CONFIG.maxBounds}
+        maxBounds={freeCamera ? undefined : MAP_CONFIG.maxBounds}
         attributionControl={false}
         onLoad={onLoad}
         onClick={handleClick}
@@ -118,7 +120,7 @@ export function GameMap({ player, stops, creatures, collectedIds, targetId, hint
       >
         {catchRing && (
           <Source id="catch-ring" type="geojson" data={catchRing}>
-            <Layer id="catch-ring-line" type="line" paint={{ 'line-color': '#ffffff', 'line-width': 2, 'line-dasharray': [2, 2], 'line-opacity': 0.85 }} />
+            <Layer id="catch-ring-line" type="line" paint={{ 'line-color': '#0b1b33', 'line-width': 2, 'line-dasharray': [2, 2], 'line-opacity': 0.85 }} />
           </Source>
         )}
         <StopPins stops={stops} collectedIds={collectedIds} targetId={targetId} hintLevel={hintLevel} />
@@ -129,7 +131,7 @@ export function GameMap({ player, stops, creatures, collectedIds, targetId, hint
       {/* Navy haze over the horizon. No backdrop-filter. */}
       <div
         className="pointer-events-none absolute inset-x-0 top-0"
-        style={{ height: MAP_CONFIG.hazePx, background: 'linear-gradient(to bottom, #0b1b33 0%, rgba(11,27,51,0.85) 35%, rgba(11,27,51,0) 100%)' }}
+        style={{ height: MAP_CONFIG.hazePx, background: `linear-gradient(to bottom, rgb(${MAP_CONFIG.hazeColor}) 0%, rgba(${MAP_CONFIG.hazeColor},0.85) 35%, rgba(${MAP_CONFIG.hazeColor},0) 100%)` }}
       />
 
       <button
