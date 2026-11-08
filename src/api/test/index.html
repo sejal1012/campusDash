@@ -1,0 +1,107 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Campus Dash API test</title>
+    <style>
+      :root { color-scheme: light dark; font-family: system-ui, sans-serif; }
+      body { margin: 0; padding: 16px; max-width: 900px; margin-inline: auto; }
+      h1 { font-size: 1.3rem; margin: 0 0 4px; }
+      h2 { font-size: 1rem; margin: 20px 0 8px; border-bottom: 1px solid #8884; padding-bottom: 4px; }
+      .row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 8px; }
+      button { padding: 6px 12px; border-radius: 6px; border: 1px solid #8886; background: #8881; cursor: pointer; font: inherit; }
+      button:hover { background: #8883; }
+      button.primary { background: #005bbb; color: #fff; border-color: #005bbb; }
+      input, select { padding: 5px 8px; border-radius: 6px; border: 1px solid #8886; font: inherit; }
+      input[type=text] { min-width: 220px; }
+      #caption { min-height: 1.4em; padding: 8px; border-radius: 6px; background: #8881; font-style: italic; }
+      #log { font: 12px/1.45 ui-monospace, monospace; white-space: pre-wrap; background: #0001; padding: 8px; border-radius: 6px; max-height: 360px; overflow: auto; }
+      .ok { color: #1a7f37; } .err { color: #c62828; } .muted { opacity: .7; }
+      #summary { font-weight: 600; }
+    </style>
+  </head>
+  <body>
+    <h1>Campus Dash API test</h1>
+    <div class="muted">Backend proxied from <code>/api</code>. Every button calls a function from <code>src/api</code>.</div>
+
+    <h2>1. Run everything</h2>
+    <div class="row">
+      <button id="runAll" class="primary">Run all JSON tests</button>
+      <span id="summary"></span>
+    </div>
+
+    <h2>2. Game data</h2>
+    <div class="row">
+      <button data-act="health">checkHealth</button>
+      <button data-act="stops">getStops</button>
+      <button data-act="creatures">getCreatures</button>
+    </div>
+    <div class="row">
+      Stop <select id="stopSel"></select>
+      <button data-act="stop">getStop</button>
+    </div>
+    <div class="row">
+      Creature <select id="creatureSel"></select>
+      answer <select id="answerSel"><option>0</option><option>1</option><option>2</option></select>
+      <button data-act="creature">getCreature</button>
+      <button data-act="answer">checkAnswer</button>
+    </div>
+
+    <h2>3. Voice (audio)</h2>
+    <div class="row">
+      <button data-act="status">getVoiceStatus</button>
+      <label><input type="checkbox" id="mute" /> muted</label>
+      <button data-act="stopVoice">stopVoice</button>
+    </div>
+    <div class="row">
+      Narration
+      <select id="eventSel"><option>welcome</option><option>leg-start</option><option>midpoint</option><option>arrival</option></select>
+      for stop <select id="narrStopSel"></select>
+      <button data-act="say">say</button>
+    </div>
+    <div class="row">
+      Place
+      <select id="placeSel">
+        <option>capen-hall</option><option>lockwood-library</option><option>natural-sciences-complex</option>
+        <option>broadview-arena</option><option>davis-hall</option><option>student-union</option>
+        <option>center-for-the-arts</option><option>clemens-hall</option>
+      </select>
+      <input type="text" id="placeText" value="tell me about this hall" />
+      <button data-act="place">speakPlaceInfo</button>
+      <button data-act="orient">"orient me"</button>
+    </div>
+    <div class="row">
+      Quiz for creature (above)
+      <button data-act="quizQ">speakQuizQuestion</button>
+      <select id="outcomeSel"><option>correct</option><option>retry</option><option>ran-away</option></select>
+      <button data-act="quizR">speakQuizReaction</button>
+    </div>
+    <div class="row">
+      Midpoint tracker: start 200 m →
+      <button data-act="legStart">startLeg</button>
+      <button data-act="leg150">update 150 m</button>
+      <button data-act="leg90">update 90 m (fires once)</button>
+    </div>
+    <div id="caption"></div>
+
+    <h2>4. Live voice guide (mic + WebRTC)</h2>
+    <div class="row">
+      Target <input type="text" id="guideTarget" value="Capen Hall" />
+      <button data-act="guideStart" class="primary">startGuide</button>
+      <button data-act="guideTarget">setTarget</button>
+      <button data-act="guideEnd">end</button>
+      <span id="guideStatus" class="muted">idle</span>
+    </div>
+    <div class="row">
+      <input type="text" id="guideText" value="Where is the library?" />
+      <button data-act="guideSend">sendText</button>
+    </div>
+
+    <h2>Log</h2>
+    <div class="row"><button id="clear">Clear</button></div>
+    <div id="log"></div>
+
+    <script type="module" src="./main.ts"></script>
+  </body>
+</html>
