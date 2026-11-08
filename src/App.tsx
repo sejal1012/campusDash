@@ -14,6 +14,9 @@ import { usePlayerPosition } from './location/usePlayerPosition'
 import { StartScreen } from './screens/StartScreen'
 import { getCharacter, loadCharacterId, saveCharacterId } from './characters'
 
+// Every page load is a fresh run: forget anything saved from the last one.
+resetDex()
+
 const DEBUG = new URLSearchParams(window.location.search).get('debug') === '1'
 
 const STATUS_TEXT: Record<string, string> = {
@@ -78,7 +81,6 @@ export default function App() {
             saveCharacterId(id)
           }}
           onStart={() => {
-            resetDex() // every run starts with nothing found
             setStartedAt(Date.now())
             setNow(Date.now())
           }}
