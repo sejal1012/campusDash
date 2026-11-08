@@ -17,6 +17,9 @@ import { AppShell } from './layout/AppShell'
 import { usePlayerPosition } from './location/usePlayerPosition'
 import { StartScreen } from './screens/StartScreen'
 import { getCharacter, loadCharacterId, saveCharacterId } from './characters'
+import { RedaAssistant } from './reda/RedaAssistant'
+import { emitGameEvent, reportDistanceToTarget } from './reda/redaEvents'
+import { unlockAudio } from './api'
 
 // Space kept free at the bottom of the map. The locate button sits here and the compass above it
 // (two 48 px buttons, 12 px apart = 108 px). The 120 px radar on the left is centered on that pair.
@@ -26,6 +29,9 @@ const RADAR_BOTTOM = MAP_BOTTOM_INSET + 108 / 2 - 120 / 2
 
 // Every page load is a fresh run: forget anything saved from the last one.
 resetDex()
+
+/** Longest the quiz waits for Reda's arrival line. */
+const ARRIVAL_LISTEN_MAX_MS = 45_000
 
 const DEBUG = new URLSearchParams(window.location.search).get('debug') === '1'
 
@@ -73,6 +79,14 @@ export default function App() {
   const target = useMemo(() => stops.find((s) => s.id === targetId) ?? null, [stops, targetId])
   const banner = STATUS_TEXT[status] ?? (offCampus ? 'Walk mode works on UB North Campus.' : null)
   const toTarget = fix && target?.coords ? distanceM(fix.pos, target.coords) : null
+  // Reda reads the distance the game already computed (closer / wrong way / building reached).
+  useEffect(() => {
+    if (runStartedAt && !arrivedId) reportDistanceToTarget(targetId, toTarget)
+  }, [runStartedAt, arrivedId, targetId, toTarget])
+  // A new target is shown (first one after the intro, then after each stop).
+  useEffect(() => {
+    if (runStartedAt && targetId) emitGameEvent('leg-start', targetId)
+  }, [runStartedAt, targetId])
 
   // The stopwatch pauses while the player is doing the quiz and reading the facts.
   const [pause, setPause] = useState<{ at: number | null; total: number }>({ at: null, total: 0 })
@@ -82,10 +96,18 @@ export default function App() {
   // Arrival flow: reach a stop -> quiz (CatchScreen) -> facts (PlaceLearnedSheet) -> next stop.
   // catchResult is null while the quiz is open, then holds the result while the facts sheet is open.
   const [catchResult, setCatchResult] = useState<CatchResult | null>(null)
+  // On arrival the player listens to Reda first; the quiz opens when the line ends.
+  // Never waits longer than ARRIVAL_LISTEN_MAX_MS, and carries on at once if there's no voice.
+  const [listeningAt, setListeningAt] = useState<string | null>(null)
   const arrive = (stopId: string) => {
     if (arrivedId || collected.includes(stopId)) return
     setArrivedId(stopId)
     setCatchResult(null)
+    setListeningAt(stopId)
+    const cap = new Promise<void>((r) => window.setTimeout(r, ARRIVAL_LISTEN_MAX_MS))
+    void Promise.race([emitGameEvent('destination-reached', stopId), cap]).then(() =>
+      setListeningAt((id) => (id === stopId ? null : id)),
+    )
     setPause((p) => (p.at === null ? { ...p, at: Date.now() } : p))
   }
   // Tapping "Tap to unlock" (only shown within creatureCatchM) starts the quiz for that stop.
@@ -99,6 +121,12 @@ export default function App() {
     setCatchResult(result)
   }
   const leaveStop = () => {
+    // Reda reacts as the player returns to the map.
+    if (arrivedId && arrivedStop) {
+      if (collected.length + 1 >= stops.length) emitGameEvent('mission-complete', arrivedStop.id)
+      else if (catchResult === 'caught') emitGameEvent('creature-unlocked', arrivedStop.id)
+      else if (catchResult === 'escaped') emitGameEvent('challenge-failed', arrivedStop.id)
+    }
     if (arrivedId) setCollected((c) => (c.includes(arrivedId) ? c : [...c, arrivedId]))
     setArrivedId(null)
     setCatchResult(null)
@@ -117,7 +145,10 @@ export default function App() {
             setCharacterId(id)
             saveCharacterId(id)
           }}
-          onLaunch={() => setLaunching(true)}
+          onLaunch={() => {
+            unlockAudio() // phones only allow audio unlocked by a tap
+            setLaunching(true)
+          }}
           onStart={() => {
             setStartedAt(Date.now())
           }}
@@ -142,6 +173,7 @@ export default function App() {
             onIntroDone={() => {
               setRunStartedAt(Date.now())
               setNow(Date.now())
+              emitGameEvent('run-started')
             }}
             gpsFailed={gpsFailed}
           />
@@ -160,7 +192,23 @@ export default function App() {
             {banner && <div className="rounded-2xl bg-[#ffb02e] px-4 py-2 text-sm font-semibold text-[#0b1b33]">{banner}</div>}
           </div>
 
-          {arrivedStop && arrivedCreature && catchResult === null && (
+          {/* Reda companion: floats above the compass/locate buttons, under full-screen overlays. */}
+          <RedaAssistant targetName={target?.name ?? null} bottomPx={MAP_BOTTOM_INSET + 108 + 20} hidden={!runStartedAt} />
+
+          {/* Arrived: listen to Reda before the quiz opens. */}
+          {arrivedStop && listeningAt === arrivedStop.id && (
+            <div className="pointer-events-none absolute right-3 z-20 flex max-w-[calc(100%-1.5rem)] justify-end" style={{ bottom: MAP_BOTTOM_INSET + 108 + 20 + 84 }} role="status" aria-live="polite">
+              <div className="anim-rise flex items-center gap-2 rounded-full border border-[#16c8f4]/60 bg-[rgba(8,20,40,0.9)] px-4 py-2 text-sm font-semibold text-white shadow-[0_6px_20px_rgba(0,0,0,0.35)]">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#16c8f4" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" className="animate-pulse">
+                  <path d="M11 5L6 9H3v6h3l5 4V5z" fill="#16c8f4" />
+                  <path d="M15.5 8.5a5 5 0 0 1 0 7M18.5 5.5a9 9 0 0 1 0 13" />
+                </svg>
+                Listen to Reda about {arrivedStop.name}
+              </div>
+            </div>
+          )}
+
+          {arrivedStop && arrivedCreature && catchResult === null && listeningAt !== arrivedStop.id && (
             <CatchScreen key={arrivedStop.id} creature={arrivedCreature} questions={arrivedQuestions} onDone={finishCatch} />
           )}
           {arrivedStop && arrivedCreature && catchResult !== null && (
@@ -198,6 +246,7 @@ export default function App() {
                 <button type="button" onClick={() => {
                   setCollected([])
                   resetDex()
+                  setListeningAt(null)
                   setArrivedId(null)
                   setCatchResult(null)
                   resumeClock()
