@@ -11,10 +11,7 @@ import { ArrivalCelebration } from './hud/ArrivalCelebration'
 import { AppShell } from './layout/AppShell'
 import { usePlayerPosition } from './location/usePlayerPosition'
 import { StartScreen } from './screens/StartScreen'
-import type { Creature, Stop } from './types'
 
-const stops = stopsData.stops as Stop[]
-const creatures = creaturesData.creatures as Creature[]
 const DEBUG = new URLSearchParams(window.location.search).get('debug') === '1'
 
 const STATUS_TEXT: Record<string, string> = {
