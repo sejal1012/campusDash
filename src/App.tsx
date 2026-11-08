@@ -15,6 +15,7 @@ import { questionsFor } from './data/questions'
 import type { CatchResult } from './game/scoring'
 import { CatchScreen } from './screens/CatchScreen'
 import { EndScreen } from './screens/EndScreen'
+import { CreatureYard } from './hud/CreatureYard'
 import { parMsFor, scoreRun, type StopResult } from './game/runScore'
 import { PlaceLearnedSheet } from './screens/PlaceLearnedSheet'
 import type { LngLat } from './types'
@@ -45,6 +46,7 @@ export default function App() {
   // Empty until the player's first position arrives (or GPS fails / is too slow).
   const [runLocations, setRunLocations] = useState<Location[]>([])
   const [startPos, setStartPos] = useState<LngLat | null>(null) // where the player was when the run was picked (for par time)
+  const [caughtStops, setCaughtStops] = useState<string[]>([]) // stops whose creature was caught, added when the facts sheet closes
   const [results, setResults] = useState<StopResult[]>([]) // one per finished stop, in the order visited
   const stops = useMemo(() => runLocations.map(toStop), [runLocations])
   const creatures = useMemo(() => runLocations.map(toCreature), [runLocations])
@@ -126,6 +128,7 @@ export default function App() {
     setCatchResult(result)
   }
   const leaveStop = () => {
+    if (arrivedId && results.find((r) => r.stopId === arrivedId)?.caught) setCaughtStops((c) => (c.includes(arrivedId) ? c : [...c, arrivedId]))
     if (arrivedId) setCollected((c) => (c.includes(arrivedId) ? c : [...c, arrivedId]))
     setArrivedId(null)
     setCatchResult(null)
@@ -159,6 +162,7 @@ export default function App() {
             player={fix}
             creatures={creatures}
             collectedIds={collected}
+            caughtIds={caughtStops}
             onCreatureTap={unlockCreature}
             onMapTap={DEBUG && teleportMode ? (pos) => injectFix(pos) : undefined}
             bottomInsetPx={MAP_BOTTOM_INSET}
@@ -207,6 +211,14 @@ export default function App() {
               }}
             />}
 
+          {/* Caught creatures slide down here and stay, playing. Clear of the radar (left) and the buttons (right). */}
+          <CreatureYard
+            creatureIds={caughtStops.map((id) => stops.find((s) => s.id === id)?.creatureId).filter((id): id is string => !!id)}
+            leftPx={148}
+            rightPx={80}
+            bottomPx={16}
+          />
+
           {/* Radar distance dial, bottom-left corner. */}
           <DistanceDial targetName={target?.name ?? null} creatureId={target?.creatureId ?? null} distanceM={toTarget} hintLevel={hintLevel} player={fix?.pos ?? null} targetPos={target?.coords ?? null} bottomPx={RADAR_BOTTOM} />
 
@@ -239,6 +251,7 @@ export default function App() {
                   setCatchResult(null)
                   setFinishedAt(null)
                   setResults([])
+                  setCaughtStops([])
                 }} className="min-h-11 rounded-xl border border-white/15 bg-[#0b1b33] px-3 text-xs font-semibold">
                   Reset
                 </button>
