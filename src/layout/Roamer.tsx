@@ -64,6 +64,7 @@ export function Roamer({ creature, gold, size = 84 }: Props) {
       style={{
         left: `${x}%`,
         top: `${y}%`,
+        width: size, // fixed width, or the browser shrinks it near the right edge
         // shift by the same percent of its own size so it never leaves the box
         transform: `translate(-${x}%, -${y}%)`,
         transition: `left ${ms}ms linear, top ${ms}ms linear, transform ${ms}ms linear`,

@@ -6,7 +6,7 @@ import stopsData from './data/stops.mock.json'
 import { DebugOverlay } from './map/DebugOverlay'
 import { GameMap } from './map/GameMap'
 import { distanceM } from './location/geo'
-import { DexChip, HintCard, MissionCard } from './hud/Hud'
+import { CreatureYard, DexStrip, MissionCard } from './hud/Hud'
 import { AppShell } from './layout/AppShell'
 import { usePlayerPosition } from './location/usePlayerPosition'
 import type { Creature, Stop } from './types'
@@ -51,7 +51,7 @@ export default function App() {
             hintLevel={hintLevel}
             onCreatureTap={(id) => setMessage(`Tapped creature ${id} (demo only)`)}
             onMapTap={DEBUG && teleportMode ? (pos) => injectFix(pos) : undefined}
-            bottomInsetPx={112}
+            bottomInsetPx={108}
             heading={heading}
             freeCamera={DEBUG}
             gpsFailed={status === 'denied' || status === 'unavailable'}
@@ -59,14 +59,16 @@ export default function App() {
 
           {/* Top HUD */}
           <div className="pointer-events-none absolute inset-x-0 top-0 z-10 flex flex-col gap-3 p-4 pt-[max(1rem,env(safe-area-inset-top))]">
-            <div className="pointer-events-auto w-fit">
-              <DexChip found={collected.length} total={stops.length} />
-            </div>
+            <DexStrip />
             <MissionCard
               stopNumber={Math.min(collected.length + 1, stops.length)}
               stopCount={stops.length}
               targetName={target?.name ?? null}
               elapsedMs={now - startedAt.current}
+              hintLevel={hintLevel}
+              distanceM={toTarget}
+              player={fix?.pos ?? null}
+              targetPos={target?.coords ?? null}
             />
             {banner && <div className="rounded-2xl bg-[#ffb02e] px-4 py-2 text-sm font-semibold text-[#0b1b33]">{banner}</div>}
             {message && <div className="rounded-2xl bg-[#005bbb] px-4 py-2 text-sm">{message}</div>}
@@ -80,7 +82,9 @@ export default function App() {
               }}
             />}
 
-          {/* Bottom hint card */}
+          {/* Bottom: caught creatures wander here on phones. Empty on desktop. */}
+          <CreatureYard />
+
           <div className="absolute inset-x-0 bottom-0 z-10 flex flex-col gap-2 p-4 pt-0">
             {DEBUG && (
               <div className="flex gap-2">
@@ -95,7 +99,6 @@ export default function App() {
                 </button>
               </div>
             )}
-            <HintCard hintLevel={hintLevel} targetName={target?.name ?? null} distanceM={toTarget} player={fix?.pos ?? null} targetPos={target?.coords ?? null} />
           </div>
       </div>
     </AppShell>
