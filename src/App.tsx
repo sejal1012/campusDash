@@ -35,7 +35,21 @@ export default function App() {
   const [teleportMode, setTeleportMode] = useState(false)
   const { fix, status, offCampus, heading, injectFix, resumeGps } = usePlayerPosition({ stops, relaxAccuracy: DEBUG })
 
-  const target = useMemo(() => stops.find((s) => !collected.includes(s.id)) ?? null, [stops, collected])
+  // The mission points at the nearest stop you have not found yet. It only switches when another
+  // stop is clearly closer (30 m), so the text does not flicker while you walk.
+  const [targetId, setTargetId] = useState<string | null>(null)
+  useEffect(() => {
+    const left = stops.filter((s) => !collected.includes(s.id) && s.coords)
+    if (left.length === 0) return setTargetId(null)
+    if (!fix) return setTargetId((cur) => (cur && left.some((s) => s.id === cur) ? cur : left[0].id))
+    const dist = (s: (typeof left)[number]) => distanceM(fix.pos, s.coords!)
+    const nearest = left.reduce((a, b) => (dist(b) < dist(a) ? b : a))
+    setTargetId((cur) => {
+      const current = left.find((s) => s.id === cur)
+      return current && dist(current) - dist(nearest) <= 30 ? current.id : nearest.id
+    })
+  }, [fix, stops, collected])
+  const target = useMemo(() => stops.find((s) => s.id === targetId) ?? null, [stops, targetId])
   const banner = STATUS_TEXT[status] ?? (offCampus ? 'Walk mode works on UB North Campus.' : null)
   const toTarget = fix && target?.coords ? distanceM(fix.pos, target.coords) : null
 
