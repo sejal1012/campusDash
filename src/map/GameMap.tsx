@@ -1,20 +1,17 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import Map, { Layer, Source, type MapMouseEvent, type MapRef } from 'react-map-gl/mapbox'
 import { CONFIG, MAP_CONFIG } from '../config'
-import type { Creature, LngLat, PlayerFix, Stop } from '../types'
+import type { Creature, LngLat, PlayerFix } from '../types'
+import type { Character } from '../characters'
 import { CreatureMarkers } from './CreatureMarkers'
 import { applyCartoonStyle } from './cartoonStyle'
 import { circleRing } from '../location/geo'
 import { PlayerMarker } from './PlayerMarker'
-import { StopPins } from './StopPins'
 
 export interface GameMapProps {
   player: PlayerFix | null
-  stops: Stop[]
   creatures: Creature[]
   collectedIds: string[]
-  targetId: string | null
-  hintLevel: 1 | 2 | 3
   onCreatureTap: (id: string) => void
   onMapTap?: (pos: LngLat) => void
   /** Px kept free at the bottom for the HUD (moves the recenter button up). */
@@ -25,12 +22,14 @@ export interface GameMapProps {
   freeCamera?: boolean
   /** True once GPS has failed (denied/unavailable): stop waiting and open on campus. */
   gpsFailed?: boolean
+  /** The UBMon chosen on the start screen. */
+  character?: Character
 }
 
 const TOKEN = import.meta.env.VITE_MAPBOX_TOKEN as string | undefined
 
 /** Presentational map: no store, no game logic. */
-export function GameMap({ player, stops, creatures, collectedIds, targetId, hintLevel, onCreatureTap, onMapTap, bottomInsetPx = 96, heading = null, freeCamera = false, gpsFailed = false }: GameMapProps) {
+export function GameMap({ player, creatures, collectedIds, onCreatureTap, onMapTap, bottomInsetPx = 96, heading = null, freeCamera = false, gpsFailed = false, character }: GameMapProps) {
   const mapRef = useRef<MapRef>(null)
   const [following, setFollowing] = useState(true)
   const playerPos = player?.pos ?? null
@@ -143,9 +142,8 @@ export function GameMap({ player, stops, creatures, collectedIds, targetId, hint
             <Layer id="catch-ring-line" type="line" paint={{ 'line-color': '#ffffff', 'line-width': 2.5, 'line-dasharray': [2, 2], 'line-opacity': 0.85 }} />
           </Source>
         )}
-        <StopPins stops={stops} collectedIds={collectedIds} targetId={targetId} hintLevel={hintLevel} />
-        <CreatureMarkers creatures={creatures} player={playerPos} onCreatureTap={onCreatureTap} />
-        {playerPos && <PlayerMarker pos={playerPos} heading={heading} onFrame={followAvatar} />}
+        <CreatureMarkers creatures={creatures} player={playerPos} collectedIds={collectedIds} onCreatureTap={onCreatureTap} showAll />
+        {playerPos && <PlayerMarker pos={playerPos} heading={heading} character={character} onFrame={followAvatar} />}
       </Map>
 
       {/* Navy haze over the horizon. No backdrop-filter. */}

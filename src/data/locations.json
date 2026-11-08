@@ -1,0 +1,13 @@
+{
+  "_note": "Every place a run can pick from. To add one: append an entry here and drop <creatureId>.webp into public/assets/creatures/. Each run picks stopsPerRun of these at random. coords are [lng, lat] (the pasted source list had lat, lng).",
+  "locations": [
+    { "id": "lockwood", "name": "Lockwood Library", "creatureId": "barkive", "coords": [-78.7856791, 43.0005899] },
+    { "id": "cfa", "name": "Center for the Arts", "creatureId": "pengogh", "coords": [-78.7828681, 43.0005234] },
+    { "id": "davis", "name": "Davis Hall", "creatureId": "voltiger", "coords": [-78.7876733, 43.0018478] },
+    { "id": "alumni-arena", "name": "Alumni Arena", "creatureId": "dribbull", "coords": [-78.7820242, 43.0000497] },
+    { "id": "capen", "name": "Capen Hall", "creatureId": "emberbun", "coords": [-78.7891696, 43.0005303] },
+    { "id": "student-union", "name": "Student Union", "creatureId": "meowxolotl", "coords": [-78.7858045, 43.001477] },
+    { "id": "nsc", "name": "Natural Sciences Complex (NSC)", "creatureId": "splashdrake", "coords": [-78.7917218, 43.0006826] },
+    { "id": "clemens", "name": "Clemens Hall", "creatureId": "snoutfin", "coords": [-78.785085, 43.0003302] }
+  ]
+}

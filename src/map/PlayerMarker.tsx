@@ -1,4 +1,7 @@
-import { Marker } from 'react-map-gl/mapbox'
+import { useEffect, useState } from 'react'
+import { Marker, useMap } from 'react-map-gl/mapbox'
+import { facingOnScreen, type Facing } from '../location/geo'
+import { getCharacter, type Character } from '../characters'
 import type { LngLat } from '../types'
 import { useGlide } from './useGlide'
 
@@ -19,57 +22,73 @@ function HeadingCone({ pos, heading }: { pos: LngLat; heading: number }) {
   )
 }
 
-/** Compact billboard avatar with soft shading: blue cap, amber backpack, mint ring. */
-function Figure({ pos, walking }: { pos: LngLat; walking: boolean }) {
+const FRAMES = 6
+
+/** Load a character's images up front so switching direction never flashes an empty frame. */
+function usePreload(character: Character) {
+  useEffect(() => {
+    const urls = character.sprites
+      ? ['idle', 'front', 'back', 'left', 'right'].map((n) => `${character.sprites}player-${n}.webp`)
+      : [character.still]
+    for (const u of urls) new Image().src = u
+  }, [character])
+}
+
+/**
+ * The chosen UBMon. With walk sprites: idle pose when still, a 6-frame strip for the facing
+ * direction while moving. Without: its start-screen pose, waddling while moving (not mirrored,
+ * so the UB lettering stays readable; the view cone shows the direction).
+ */
+function Figure({ pos, walking, facing, character }: { pos: LngLat; walking: boolean; facing: Facing; character: Character }) {
+  usePreload(character)
+  let art
+  if (character.sprites) {
+    art = walking ? (
+      <img key={facing} src={`${character.sprites}player-${facing}.webp`} alt="" className="player-strip" style={{ width: `${FRAMES * 100}%` }} draggable={false} />
+    ) : (
+      <img src={`${character.sprites}player-idle.webp`} alt="" className="player-idle" draggable={false} />
+    )
+  } else {
+    art = <img src={character.still} alt="" className={`player-still${walking ? ' is-walking' : ''}`} draggable={false} />
+  }
   return (
-    <Marker longitude={pos[0]} latitude={pos[1]} anchor="bottom" offset={[0, 5]} pitchAlignment="viewport" rotationAlignment="viewport">
-      <svg width="40" height="54" viewBox="0 0 40 54" role="img" aria-label="You are here" className={walking ? 'player-walking' : undefined}>
-        <defs>
-          <linearGradient id="p-body" x1="0" x2="1">
-            <stop offset="0" stopColor="#ffffff" />
-            <stop offset="1" stopColor="#b7c8e8" />
-          </linearGradient>
-          <linearGradient id="p-cap" x1="0" x2="1">
-            <stop offset="0" stopColor="#3b8cf0" />
-            <stop offset="1" stopColor="#003f87" />
-          </linearGradient>
-        </defs>
-        {/* ground shadow + mint ring */}
-        <ellipse className="p-shadow" cx="20" cy="49" rx="15" ry="4.5" fill="#000" opacity="0.25" />
-        <ellipse cx="20" cy="49" rx="14" ry="4" fill="none" stroke="#3ddc97" strokeWidth="2" />
-        {/* legs (swing from the hip while walking) */}
-        <rect className="p-leg-a" x="14" y="38" width="5" height="10" rx="2.5" fill="#0b1b33" />
-        <rect className="p-leg-b" x="21" y="38" width="5" height="10" rx="2.5" fill="#0b1b33" />
-        {/* upper body bobs once per step while walking */}
-        <g className="p-upper">
-        {/* backpack */}
-        <rect className="p-pack" x="6" y="24" width="10" height="16" rx="4" fill="#ffb02e" />
-        {/* body */}
-        <rect x="12" y="22" width="17" height="19" rx="7" fill="url(#p-body)" stroke="#003f87" strokeWidth="1.2" />
-        {/* head */}
-        <circle cx="20.5" cy="14" r="8" fill="#f4c9a0" stroke="#8a5a34" strokeWidth="0.6" />
-        <circle cx="17.5" cy="15" r="1.1" fill="#0b1b33" />
-        <circle cx="23.5" cy="15" r="1.1" fill="#0b1b33" />
-        {/* cap */}
-        <path d="M12.5 13a8 8 0 0 1 16 0z" fill="url(#p-cap)" />
-        <rect x="21" y="11.5" width="12" height="3" rx="1.5" fill="#003f87" />
-        </g>
-      </svg>
+    <Marker longitude={pos[0]} latitude={pos[1]} anchor="bottom" offset={[0, 4]} pitchAlignment="viewport" rotationAlignment="viewport">
+      <div className="player-sprite" role="img" aria-label={`You are here (${character.name})`}>
+        <span className="player-ring" aria-hidden="true" />
+        <div className="player-frame">{art}</div>
+      </div>
     </Marker>
   )
+}
+
+/** Map rotation in degrees, kept current while the user rotates the map. */
+function useMapBearing() {
+  const { current: map } = useMap()
+  const [bearing, setBearing] = useState(0)
+  useEffect(() => {
+    if (!map) return
+    const update = () => setBearing(map.getBearing())
+    update()
+    map.on('rotate', update)
+    return () => {
+      map.off('rotate', update)
+    }
+  }, [map])
+  return bearing
 }
 
 /**
  * `pos` is the latest GPS fix. The avatar glides to it at walking pace and plays a walk cycle
  * while moving. `onFrame` receives each drawn position (used to keep the camera on the avatar).
  */
-export function PlayerMarker({ pos, heading, onFrame }: { pos: LngLat; heading: number | null; onFrame?: (pos: LngLat) => void }) {
+export function PlayerMarker({ pos, heading, character = getCharacter(null), onFrame }: { pos: LngLat; heading: number | null; character?: Character; onFrame?: (pos: LngLat) => void }) {
   const glide = useGlide(pos, onFrame)
   const shown = glide.pos ?? pos
+  const facing = facingOnScreen(heading, useMapBearing())
   return (
     <>
       {heading !== null && <HeadingCone pos={shown} heading={heading} />}
-      <Figure pos={shown} walking={glide.walking} />
+      <Figure pos={shown} walking={glide.walking} facing={facing} character={character} />
     </>
   )
 }
