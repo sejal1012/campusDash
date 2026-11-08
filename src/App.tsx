@@ -1,6 +1,6 @@
 // TEMPORARY demo page for the map module. Local state only (no store).
 // Real screens and game logic live elsewhere (see CLAUDE.md section 5).
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import creaturesData from './data/creatures.mock.json'
 import stopsData from './data/stops.mock.json'
 import { DebugOverlay } from './map/DebugOverlay'
@@ -9,6 +9,7 @@ import { distanceM } from './location/geo'
 import { DexChip, HintCard, MissionCard } from './hud/Hud'
 import { AppShell } from './layout/AppShell'
 import { usePlayerPosition } from './location/usePlayerPosition'
+import { StartScreen } from './screens/StartScreen'
 import type { Creature, Stop } from './types'
 
 const stops = stopsData.stops as Stop[]
@@ -25,7 +26,8 @@ export default function App() {
   const [collected, setCollected] = useState<string[]>([])
   const [hintLevel, setHintLevel] = useState<1 | 2 | 3>(1)
   const [message, setMessage] = useState<string | null>(null)
-  const startedAt = useRef(Date.now())
+  // Null until the player taps Start. The stopwatch and GPS only run after that.
+  const [startedAt, setStartedAt] = useState<number | null>(null)
   const [now, setNow] = useState(Date.now())
   useEffect(() => {
     const id = setInterval(() => setNow(Date.now()), 250)
@@ -33,11 +35,24 @@ export default function App() {
   }, [])
 
   const [teleportMode, setTeleportMode] = useState(false)
-  const { fix, status, offCampus, heading, injectFix, resumeGps } = usePlayerPosition({ stops, relaxAccuracy: DEBUG })
+  const { fix, status, offCampus, heading, injectFix, resumeGps } = usePlayerPosition({ stops, relaxAccuracy: DEBUG, enabled: startedAt !== null })
 
   const target = useMemo(() => stops.find((s) => !collected.includes(s.id)) ?? null, [collected])
   const banner = STATUS_TEXT[status] ?? (offCampus ? 'Walk mode works on UB North Campus.' : null)
   const toTarget = fix && target?.coords ? distanceM(fix.pos, target.coords) : null
+
+  if (startedAt === null) {
+    return (
+      <AppShell>
+        <StartScreen
+          onStart={() => {
+            setStartedAt(Date.now())
+            setNow(Date.now())
+          }}
+        />
+      </AppShell>
+    )
+  }
 
   return (
     <AppShell>
@@ -66,7 +81,7 @@ export default function App() {
               stopNumber={Math.min(collected.length + 1, stops.length)}
               stopCount={stops.length}
               targetName={target?.name ?? null}
-              elapsedMs={now - startedAt.current}
+              elapsedMs={Math.max(0, now - startedAt)}
             />
             {banner && <div className="rounded-2xl bg-[#ffb02e] px-4 py-2 text-sm font-semibold text-[#0b1b33]">{banner}</div>}
             {message && <div className="rounded-2xl bg-[#005bbb] px-4 py-2 text-sm">{message}</div>}
