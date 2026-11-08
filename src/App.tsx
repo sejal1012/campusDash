@@ -155,7 +155,7 @@ export default function App() {
                 stopCount={stops.length}
                 targetName={target?.name ?? null}
               />
-              <ClockBadge elapsedMs={Math.max(0, now - startedAt)} />
+              <ClockBadge elapsedMs={elapsedMs} />
             </div>
             {banner && <div className="rounded-2xl bg-[#ffb02e] px-4 py-2 text-sm font-semibold text-[#0b1b33]">{banner}</div>}
           </div>
