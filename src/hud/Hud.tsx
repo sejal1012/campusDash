@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { CreatureArt } from '../components/CreatureArt'
-import { ROSTER } from '../data/roster'
+import { useRunRoster } from '../game/run'
 import { useDex } from '../game/dex'
 import { bearingDeg } from '../location/geo'
 import type { LngLat } from '../types'
@@ -19,19 +19,20 @@ export function formatStopwatch(ms: number): string {
 }
 
 /**
- * Top row: all 8 creatures. Gray = still to find, color = caught.
+ * Top row: the creatures in this run. Gray = still to find, color = caught.
  * Phone and tablet only; on desktop (lg) the left side panel shows this instead, so the row stays empty.
  */
 export function DexStrip() {
   const dex = useDex()
-  const found = ROSTER.filter((c) => dex[c.id]).length
+  const roster = useRunRoster()
+  const found = roster.filter((c) => dex[c.id]).length
   return (
     <div className="h-12">
       <ul
         className={`flex h-full items-center gap-1 rounded-full px-2 lg:hidden ${navyCard}`}
-        aria-label={`Campus Dex: ${found} of ${ROSTER.length} caught`}
+        aria-label={`Campus Dex: ${found} of ${roster.length} caught`}
       >
-        {ROSTER.map((c) => {
+        {roster.map((c) => {
           const entry = dex[c.id]
           return (
             <li key={c.id} className="flex min-w-0 flex-1 justify-center">
@@ -79,7 +80,7 @@ export function MissionPill({ stopNumber, stopCount, targetName }: MissionProps)
       onClick={() => setOpen((o) => !o)}
       aria-expanded={open}
       aria-label={done ? 'Run complete' : `Mission ${stopNumber} of ${stopCount}: get to ${targetName}`}
-      className={`pointer-events-auto flex max-w-[calc(100%-4.5rem)] flex-col overflow-hidden text-left shadow-[0_6px_20px_rgba(0,0,0,0.35)] transition-[border-radius] duration-200 ${card} ${open ? 'rounded-[22px] p-2.5 pr-4' : 'rounded-full p-1.5 pr-4'}`}
+      className={`pointer-events-auto flex max-w-[calc(100%-4.5rem)] flex-col overflow-hidden text-left shadow-[0_6px_20px_rgba(0,0,0,0.35)] transition-[width,border-radius,padding] motion-reduce:transition-none duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] ${card} ${open ? 'w-[17rem] rounded-[22px] p-2.5 pr-4' : 'w-[7.25rem] rounded-full p-1.5 pr-4'}`}
     >
       <div className="flex items-center gap-2.5">
         <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full ${done ? 'bg-[var(--mint)] text-[var(--navy)]' : 'bg-[var(--amber)] text-[#412402]'}`}>
@@ -89,23 +90,29 @@ export function MissionPill({ stopNumber, stopCount, targetName }: MissionProps)
           {done ? 'Done!' : `${stopNumber} / ${stopCount}`}
         </span>
       </div>
-      {open && (
-        <div className="anim-fade mt-2 min-w-0 px-1">
-          <div className={`text-[11px] font-medium uppercase tracking-wider ${subtle}`}>
-            {done ? 'Run complete' : 'Current objective'}
-          </div>
-          <div className={`mt-0.5 text-lg font-bold leading-tight ${ink}`} style={heading}>
-            {done ? 'All stops collected' : `Get to ${targetName}`}
-          </div>
-          <div className="mt-2 flex gap-1" role="img" aria-label={`${collectedCount} of ${stopCount} stops collected`}>
-            {Array.from({ length: stopCount }, (_, i) => {
-              const isDone = i < stopNumber - 1
-              const current = i === stopNumber - 1 && !done
-              return <span key={i} className={`h-1.5 w-5 rounded-full ${isDone ? 'bg-[var(--mint)]' : current ? 'bg-[var(--amber)]' : 'bg-[#633806]/15'}`} />
-            })}
+      {/* Always rendered so it can slide open: the row grows from 0 to its full height while it fades in. */}
+      <div
+        className={`grid transition-[grid-template-rows,opacity] motion-reduce:transition-none duration-300 ease-out ${open ? 'grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0'}`}
+        aria-hidden={!open}
+      >
+        <div className="min-h-0 overflow-hidden">
+          <div className="mt-2 min-w-0 px-1">
+            <div className={`text-[11px] font-medium uppercase tracking-wider ${subtle}`}>
+              {done ? 'Run complete' : 'Next Stop'}
+            </div>
+            <div className={`mt-0.5 text-lg font-bold leading-tight ${ink}`} style={heading}>
+              {done ? 'All stops collected' : `Get to ${targetName}`}
+            </div>
+            <div className="mt-2 flex gap-1" role="img" aria-label={`${collectedCount} of ${stopCount} stops collected`}>
+              {Array.from({ length: stopCount }, (_, i) => {
+                const isDone = i < stopNumber - 1
+                const current = i === stopNumber - 1 && !done
+                return <span key={i} className={`h-1.5 w-5 rounded-full ${isDone ? 'bg-[var(--mint)]' : current ? 'bg-[var(--amber)]' : 'bg-[#633806]/15'}`} />
+              })}
+            </div>
           </div>
         </div>
-      )}
+      </div>
     </button>
   )
 }

@@ -174,7 +174,7 @@ body {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  [class*='anim-'], [class*='trick-'], .fx-particle, .spark, .speech-bubble { animation-duration: 1ms !important; animation-iteration-count: 1 !important; }
+  [class*='anim-'], [class*='trick-'], .creature-drop-in, .fx-particle, .spark, .speech-bubble { animation-duration: 1ms !important; animation-iteration-count: 1 !important; }
 }
 
 /* Player sprite (UBMon). 56px frame; feet sit 6/128 of the frame above its bottom edge. */
@@ -309,6 +309,19 @@ body {
 @keyframes trick-runoff { 0% { transform: translateX(0); opacity: 1; } 15% { transform: translateX(-14px) translateY(-4px); } 100% { transform: translateX(420%) translateY(-6px); opacity: 0; } }
 .trick-runoff { animation: trick-runoff 1100ms ease-in both; }
 .trick-gone { visibility: hidden; }
+@keyframes trick-dance {
+  0%, 100% { transform: translateY(0) rotate(0); }
+  12% { transform: translateY(-14px) rotate(-14deg); }
+  25% { transform: translateY(0) rotate(0); }
+  37% { transform: translateY(-14px) rotate(14deg); }
+  50% { transform: translateY(0) rotate(0) scale(1.08, 0.92); }
+  62% { transform: translateY(-18px) rotate(-10deg) scale(1.06); }
+  75% { transform: translateY(0) rotate(8deg); }
+  88% { transform: translateY(-10px) rotate(-6deg); }
+}
+.trick-dance { animation: trick-dance 1600ms ease-in-out; }
+@keyframes trick-flip { 0% { transform: translateY(0) rotate(0); } 50% { transform: translateY(-40px) rotate(180deg); } 100% { transform: translateY(0) rotate(360deg); } }
+.trick-flip { animation: trick-flip 900ms ease-in-out; }
 @keyframes trick-runin { 0% { transform: translateX(-420%); opacity: 0; } 20% { opacity: 1; } 80% { transform: translateX(8px); } 100% { transform: translateX(0); opacity: 1; } }
 .trick-runin { animation: trick-runin 900ms ease-out both; }
 
@@ -318,3 +331,34 @@ body {
   100% { transform: translate(calc(-50% + var(--dx)), var(--dy)) scale(1.1) rotate(40deg); opacity: 0; }
 }
 .fx-particle { position: absolute; left: 50%; top: 35%; pointer-events: none; line-height: 1; animation: fx-burst 1300ms ease-out forwards; z-index: 5; }
+
+/* Campus Dex card entrance (desktop left panel) */
+@keyframes dex-card-in {
+  0% { opacity: 0; transform: translateX(-48px) scale(0.96); filter: blur(10px); }
+  100% { opacity: 1; transform: translateX(0) scale(1); filter: blur(0); }
+}
+.anim-dex-card { animation: dex-card-in 800ms cubic-bezier(0.22, 1, 0.36, 1) both; }
+@keyframes dex-tile-in {
+  0% { opacity: 0; transform: translateY(14px) scale(0.7); }
+  70% { transform: translateY(-3px) scale(1.05); }
+  100% { opacity: 1; transform: translateY(0) scale(1); }
+}
+.anim-dex-tile { animation: dex-tile-in 520ms cubic-bezier(0.22, 1, 0.36, 1) both; }
+
+/* Creature park entrance (desktop right panel): mirrors the Dex card, a touch later */
+@keyframes park-in {
+  0% { opacity: 0; transform: translateX(48px) scale(0.96); filter: blur(10px); }
+  100% { opacity: 1; transform: translateX(0) scale(1); filter: blur(0); }
+}
+.anim-park-in { animation: park-in 800ms 250ms cubic-bezier(0.22, 1, 0.36, 1) both; }
+
+/* A freshly unlocked creature slides down from the top of the screen into the yard, with a bounce on landing */
+@keyframes creature-drop {
+  0% { transform: translateY(-75vh) scale(2.2); opacity: 0; filter: brightness(1.8); }
+  15% { opacity: 1; }
+  62% { transform: translateY(0) scale(1); filter: brightness(1.2); }
+  76% { transform: translateY(-22px) scale(1.04, 0.96); }
+  88% { transform: translateY(0) scale(1.08, 0.9); filter: brightness(1); }
+  100% { transform: translateY(0) scale(1); }
+}
+.creature-drop-in { animation: creature-drop 1500ms cubic-bezier(0.3, 0.1, 0.3, 1) both; }

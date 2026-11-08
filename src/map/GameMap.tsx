@@ -12,6 +12,8 @@ export interface GameMapProps {
   player: PlayerFix | null
   creatures: Creature[]
   collectedIds: string[]
+  /** Stops whose creature was caught (shown in colour). */
+  caughtIds: string[]
   onCreatureTap: (id: string) => void
   onMapTap?: (pos: LngLat) => void
   /** Px kept free at the bottom for the HUD (moves the recenter button up). */
@@ -34,7 +36,7 @@ const INTRO = { zoom: MAP_CONFIG.minZoom, pitch: 0, bearing: -70, durationMs: 30
 const TOKEN = import.meta.env.VITE_MAPBOX_TOKEN as string | undefined
 
 /** Presentational map: no store, no game logic. */
-export function GameMap({ player, creatures, collectedIds, onCreatureTap, onMapTap, bottomInsetPx = 96, heading = null, freeCamera = false, gpsFailed = false, character, onIntroDone }: GameMapProps) {
+export function GameMap({ player, creatures, collectedIds, caughtIds, onCreatureTap, onMapTap, bottomInsetPx = 96, heading = null, freeCamera = false, gpsFailed = false, character, onIntroDone }: GameMapProps) {
   const mapRef = useRef<MapRef>(null)
   const [following, setFollowing] = useState(true)
   const [bearing, setBearing] = useState(0)
@@ -195,7 +197,7 @@ export function GameMap({ player, creatures, collectedIds, onCreatureTap, onMapT
             <Layer id="catch-ring-line" type="line" paint={{ 'line-color': '#ffffff', 'line-width': 2.5, 'line-dasharray': [2, 2], 'line-opacity': 0.85 }} />
           </Source>
         )}
-        <CreatureMarkers creatures={creatures} player={playerPos} collectedIds={collectedIds} onCreatureTap={onCreatureTap} showAll />
+        <CreatureMarkers creatures={creatures} player={playerPos} collectedIds={collectedIds} caughtIds={caughtIds} onCreatureTap={onCreatureTap} showAll />
         {/* Beacon on the player's spot while the camera flies in; the UBMon drops in once it lands */}
         {!introDone && startPos && (
           <Marker longitude={startPos[0]} latitude={startPos[1]} anchor="center" pitchAlignment="map" rotationAlignment="map">
