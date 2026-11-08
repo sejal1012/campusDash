@@ -168,7 +168,62 @@ body {
   position: relative;
   width: 56px;
   height: 56px;
+  /* Lands on the map when the opening fly-in finishes */
+  animation: player-drop 0.7s cubic-bezier(0.34, 1.4, 0.64, 1) both;
 }
+@keyframes player-drop {
+  0% { opacity: 0; transform: translateY(-90px) scale(0.6); }
+  55% { opacity: 1; transform: translateY(4px) scale(1.08, 0.92); }
+  75% { transform: translateY(-6px) scale(0.97, 1.03); }
+  100% { transform: translateY(0) scale(1); }
+}
+
+/* ---------- Opening sequence ---------- */
+.map-flash {
+  z-index: 30;
+  background: radial-gradient(circle at 50% 66%, #ffffff 0%, #d9f1ff 35%, #9fd6ff 100%);
+  animation: map-flash-out 0.9s 0.15s ease-out forwards;
+}
+@keyframes map-flash-out { to { opacity: 0; visibility: hidden; } }
+
+.intro-beacon { position: relative; width: 120px; height: 120px; }
+.intro-beacon span {
+  position: absolute;
+  inset: 0;
+  border: 3px solid #9fe0ff;
+  border-radius: 50%;
+  box-shadow: 0 0 12px #4fb6ff, inset 0 0 12px rgba(79, 182, 255, 0.6);
+  animation: beacon-pulse 1.5s ease-out infinite;
+}
+.intro-beacon span:nth-child(2) { animation-delay: 0.5s; }
+.intro-beacon span:nth-child(3) { animation-delay: 1s; }
+.intro-beacon::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 18px;
+  height: 18px;
+  margin: -9px 0 0 -9px;
+  border-radius: 50%;
+  background: #ffffff;
+  box-shadow: 0 0 0 4px #2f8cff, 0 0 18px 6px rgba(120, 210, 255, 0.9);
+}
+@keyframes beacon-pulse {
+  from { transform: scale(0.15); opacity: 1; }
+  to { transform: scale(1); opacity: 0; }
+}
+
+/* HUD stays hidden during the fly-in, then slides in */
+.hud-hidden { opacity: 0; pointer-events: none !important; }
+.hud-hidden * { pointer-events: none !important; }
+.hud-in-top { animation: hud-in-top 0.5s ease-out both; }
+.hud-in-bottom { animation: hud-in-bottom 0.5s 0.1s ease-out both; }
+@keyframes hud-in-top { from { opacity: 0; transform: translateY(-24px); } }
+@keyframes hud-in-bottom { from { opacity: 0; transform: translateY(24px); } }
+[data-intro='running'] { opacity: 0; pointer-events: none; }
+[data-intro='done'] { animation: hud-fade 0.4s 0.2s ease-out both; }
+@keyframes hud-fade { from { opacity: 0; } }
 .player-ring {
   position: absolute;
   left: 50%;
@@ -217,7 +272,8 @@ body {
   75% { transform: rotate(0deg) translateY(-3px); }
 }
 @media (prefers-reduced-motion: reduce) {
-  .player-strip, .player-still.is-walking { animation: none; }
+  .player-strip, .player-still.is-walking, .player-sprite, .intro-beacon span, .hud-in-top, .hud-in-bottom, [data-intro='done'] { animation: none; }
+  .map-flash { display: none; }
 }
 
 /* ---------- Arrival spotlight ---------- */

@@ -1,4 +1,4 @@
-import { useEffect, useRef, type CSSProperties } from 'react'
+import { useEffect, useRef, useState, type CSSProperties } from 'react'
 import { CHARACTERS, carouselSlot } from '../characters'
 import './start.css'
 
@@ -41,15 +41,30 @@ const depth = (d: number) => ({ '--d': d }) as CSSProperties
 interface Props {
   characterId: string
   onSelect: (id: string) => void
+  /** Called the moment Start is tapped (begin finding the player while the exit animation plays). */
+  onLaunch?: () => void
+  /** Called when the exit animation has finished. */
   onStart: () => void
 }
+
+/** Length of the exit animation (keep in step with the .ss-leaving keyframes in start.css). */
+const EXIT_MS = 1100
 
 /**
  * Animated, layered title screen with a character picker: the mascots rotate around the ring
  * (swipe, arrows, arrow keys, or tap one) and the one in front is the player's UBMon.
  */
-export function StartScreen({ characterId, onSelect, onStart }: Props) {
+export function StartScreen({ characterId, onSelect, onLaunch, onStart }: Props) {
   const root = useRef<HTMLDivElement>(null)
+  // Exit: the chosen UBMon dives into the ring, the others hop away, then a flash hands over to the map.
+  const [leaving, setLeaving] = useState(false)
+  const start = () => {
+    if (leaving) return
+    setLeaving(true)
+    onLaunch?.()
+    const reduce = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
+    window.setTimeout(onStart, reduce ? 0 : EXIT_MS)
+  }
   const selected = Math.max(0, CHARACTERS.findIndex((c) => c.id === characterId))
   const current = CHARACTERS[selected]
   // Track the latest pick in a ref so several quick taps each move one step (before React re-renders).
@@ -58,6 +73,7 @@ export function StartScreen({ characterId, onSelect, onStart }: Props) {
     selectedRef.current = selected
   }, [selected])
   const rotate = (step: number) => {
+    if (leaving) return
     const n = CHARACTERS.length
     selectedRef.current = (selectedRef.current + step + n) % n
     onSelect(CHARACTERS[selectedRef.current].id)
@@ -117,7 +133,7 @@ export function StartScreen({ characterId, onSelect, onStart }: Props) {
   }, [])
 
   return (
-    <div ref={root} className="ss">
+    <div ref={root} className={`ss${leaving ? ' ss-leaving' : ''}`} aria-busy={leaving}>
       {/* Far: campus scene, slowly drifting */}
       <div className="ss-par ss-bg" style={depth(-6)}>
         <img src={`${A}campus.webp`} alt="" className="ss-campus" />
@@ -207,7 +223,7 @@ export function StartScreen({ characterId, onSelect, onStart }: Props) {
             <span className="ss-pick-hint">Choose your UBMon</span>
             <span key={current.id} className="ss-pick-name">{current.name}</span>
           </div>
-          <button type="button" onClick={onStart} className="ss-start">
+          <button type="button" onClick={start} className="ss-start" disabled={leaving}>
             <span className="ss-start-label">Start</span>
             <svg viewBox="0 0 24 24" width="26" height="26" aria-hidden="true">
               <path d="M7 4.5v15l12-7.5z" fill="currentColor" />
@@ -221,6 +237,9 @@ export function StartScreen({ characterId, onSelect, onStart }: Props) {
 
       {/* Front: skyline silhouette along the bottom */}
       <img src={`${A}skyline.webp`} alt="" className="ss-skyline" />
+
+      {/* Exit flash; the map fades in from the same colour */}
+      {leaving && <div className="ss-flash" aria-hidden="true" />}
     </div>
   )
 }

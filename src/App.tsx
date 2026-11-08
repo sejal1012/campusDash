@@ -29,7 +29,10 @@ export default function App() {
   const [hintLevel, setHintLevel] = useState<1 | 2 | 3>(1)
   const [message, setMessage] = useState<string | null>(null)
   // Null until the player taps Start. The stopwatch and GPS only run after that.
+  // Start flow: tap Start (launching: GPS starts) -> exit animation -> map fly-in -> run starts (stopwatch).
+  const [launching, setLaunching] = useState(false)
   const [startedAt, setStartedAt] = useState<number | null>(null)
+  const [runStartedAt, setRunStartedAt] = useState<number | null>(null)
   const [characterId, setCharacterId] = useState(loadCharacterId)
   const [now, setNow] = useState(Date.now())
   useEffect(() => {
@@ -38,7 +41,7 @@ export default function App() {
   }, [])
 
   const [teleportMode, setTeleportMode] = useState(false)
-  const { fix, status, offCampus, heading, injectFix, resumeGps } = usePlayerPosition({ stops, relaxAccuracy: DEBUG, enabled: startedAt !== null })
+  const { fix, status, offCampus, heading, injectFix, resumeGps } = usePlayerPosition({ stops, relaxAccuracy: DEBUG, enabled: launching || startedAt !== null })
 
   // The mission points at the nearest stop you have not found yet. It only switches when another
   // stop is clearly closer (30 m), so the text does not flicker while you walk.
@@ -78,10 +81,8 @@ export default function App() {
             setCharacterId(id)
             saveCharacterId(id)
           }}
-          onStart={() => {
-            setStartedAt(Date.now())
-            setNow(Date.now())
-          }}
+          onLaunch={() => setLaunching(true)}
+          onStart={() => setStartedAt(Date.now())}
         />
       </AppShell>
     )
@@ -101,10 +102,14 @@ export default function App() {
             character={getCharacter(characterId)}
             freeCamera={DEBUG}
             gpsFailed={status === 'denied' || status === 'unavailable'}
+            onIntroDone={() => {
+              setRunStartedAt(Date.now())
+              setNow(Date.now())
+            }}
           />
 
           {/* Top HUD */}
-          <div className="pointer-events-none absolute inset-x-0 top-0 z-10 flex flex-col gap-3 p-4 pt-[max(1rem,env(safe-area-inset-top))]">
+          <div className={`pointer-events-none absolute inset-x-0 top-0 z-10 flex flex-col gap-3 p-4 pt-[max(1rem,env(safe-area-inset-top))] ${runStartedAt ? 'hud-in-top' : 'hud-hidden'}`}>
             <div className="pointer-events-auto w-fit">
               <DexChip found={collected.length} total={stops.length} />
             </div>
@@ -112,7 +117,7 @@ export default function App() {
               stopNumber={Math.min(collected.length + 1, stops.length)}
               stopCount={stops.length}
               targetName={target?.name ?? null}
-              elapsedMs={Math.max(0, now - startedAt)}
+              elapsedMs={runStartedAt ? Math.max(0, now - runStartedAt) : 0}
             />
             {banner && <div className="rounded-2xl bg-[#ffb02e] px-4 py-2 text-sm font-semibold text-[#0b1b33]">{banner}</div>}
             {message && <div className="rounded-2xl bg-[#005bbb] px-4 py-2 text-sm">{message}</div>}
@@ -136,7 +141,7 @@ export default function App() {
             />}
 
           {/* Bottom hint card */}
-          <div className="absolute inset-x-0 bottom-0 z-10 flex flex-col gap-2 p-4 pt-0">
+          <div className={`absolute inset-x-0 bottom-0 z-10 flex flex-col gap-2 p-4 pt-0 ${runStartedAt ? 'hud-in-bottom' : 'hud-hidden'}`}>
             {DEBUG && (
               <div className="flex gap-2">
                 <button type="button" onClick={() => setHintLevel((h) => ((h % 3) + 1) as 1 | 2 | 3)} className="min-h-11 rounded-xl bg-[#005bbb] px-3 text-xs font-semibold">
