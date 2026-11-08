@@ -12,6 +12,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@elevenlabs/client": "^1.30.0",
     "@turf/distance": "^7.4.0",
     "mapbox-gl": "^3.34.2",
     "react": "^19.3.1",
