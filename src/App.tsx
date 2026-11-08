@@ -68,10 +68,13 @@ export default function App() {
   const banner = STATUS_TEXT[status] ?? (offCampus ? 'Walk mode works on UB North Campus.' : null)
   const toTarget = fix && target?.coords ? distanceM(fix.pos, target.coords) : null
 
-  // The stopwatch pauses while the player is doing the quiz and reading the facts.
-  const [pause, setPause] = useState<{ at: number | null; total: number }>({ at: null, total: 0 })
-  const resumeClock = () => setPause((p) => (p.at === null ? p : { at: null, total: p.total + (Date.now() - p.at) }))
-  const elapsedMs = runStartedAt ? Math.max(0, (pause.at ?? now) - runStartedAt - pause.total) : 0
+  // The stopwatch runs from the start of the run until the last creature is found. It never pauses
+  // (not during quizzes or fact sheets) and never restarts.
+  const [finishedAt, setFinishedAt] = useState<number | null>(null)
+  useEffect(() => {
+    if (finishedAt === null && collected.length >= stops.length) setFinishedAt(Date.now())
+  }, [collected, stops, finishedAt])
+  const elapsedMs = runStartedAt ? Math.max(0, (finishedAt ?? now) - runStartedAt) : 0
 
   // Arrival flow: reach a stop -> quiz (CatchScreen) -> facts (PlaceLearnedSheet) -> next stop.
   // catchResult is null while the quiz is open, then holds the result while the facts sheet is open.
@@ -80,7 +83,6 @@ export default function App() {
     if (arrivedId || collected.includes(stopId)) return
     setArrivedId(stopId)
     setCatchResult(null)
-    setPause((p) => (p.at === null ? { ...p, at: Date.now() } : p))
   }
   // Tapping "Tap to unlock" (only shown within creatureCatchM) starts the quiz for that stop.
   const unlockCreature = (creatureId: string) => {
@@ -96,7 +98,6 @@ export default function App() {
     if (arrivedId) setCollected((c) => (c.includes(arrivedId) ? c : [...c, arrivedId]))
     setArrivedId(null)
     setCatchResult(null)
-    resumeClock()
   }
   const arrivedStop = stops.find((s) => s.id === arrivedId) ?? null
   const arrivedCreature = arrivedStop ? ROSTER.find((c) => c.id === arrivedStop.creatureId) ?? null : null
@@ -134,7 +135,7 @@ export default function App() {
             character={getCharacter(characterId)}
             freeCamera={DEBUG}
             onIntroDone={() => {
-              setRunStartedAt(Date.now())
+              setRunStartedAt((t) => t ?? Date.now()) // set once, never reset
               setNow(Date.now())
             }}
             gpsFailed={gpsFailed}
@@ -196,7 +197,7 @@ export default function App() {
                   resetDex()
                   setArrivedId(null)
                   setCatchResult(null)
-                  resumeClock()
+                  setFinishedAt(null)
                 }} className="min-h-11 rounded-xl border border-white/15 bg-[#0b1b33] px-3 text-xs font-semibold">
                   Reset
                 </button>
