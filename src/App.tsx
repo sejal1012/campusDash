@@ -1,8 +1,10 @@
 // TEMPORARY demo page for the map module. Local state only (no store).
 // Real screens and game logic live elsewhere (see CLAUDE.md section 5).
 import { useEffect, useMemo, useState } from 'react'
-import { ALL_LOCATIONS, toCreature, toStop } from './game/locations'
-import { pickRandom } from './game/pickLocations'
+import { ALL_LOCATIONS, toCreature, toStop, type Location } from './game/locations'
+import { pickRandom, pickRun } from './game/pickLocations'
+import { setRunCreatureIds } from './game/run'
+import { CONFIG } from './config'
 import { DebugOverlay } from './map/DebugOverlay'
 import { GameMap } from './map/GameMap'
 import { distanceM } from './location/geo'
@@ -12,7 +14,10 @@ import { ROSTER } from './data/roster'
 import { questionsFor } from './data/questions'
 import type { CatchResult } from './game/scoring'
 import { CatchScreen } from './screens/CatchScreen'
+import { EndScreen } from './screens/EndScreen'
+import { parMsFor, scoreRun, type StopResult } from './game/runScore'
 import { PlaceLearnedSheet } from './screens/PlaceLearnedSheet'
+import type { LngLat } from './types'
 import { AppShell } from './layout/AppShell'
 import { usePlayerPosition } from './location/usePlayerPosition'
 import { StartScreen } from './screens/StartScreen'
@@ -36,8 +41,13 @@ const STATUS_TEXT: Record<string, string> = {
 }
 
 export default function App() {
-  // The player must find every location to finish.
-  const [{ stops, creatures }] = useState(() => ({ stops: ALL_LOCATIONS.map(toStop), creatures: ALL_LOCATIONS.map(toCreature) }))
+  // This run's locations (5 of the 8): the one nearest the player first, the rest random.
+  // Empty until the player's first position arrives (or GPS fails / is too slow).
+  const [runLocations, setRunLocations] = useState<Location[]>([])
+  const [startPos, setStartPos] = useState<LngLat | null>(null) // where the player was when the run was picked (for par time)
+  const [results, setResults] = useState<StopResult[]>([]) // one per finished stop, in the order visited
+  const stops = useMemo(() => runLocations.map(toStop), [runLocations])
+  const creatures = useMemo(() => runLocations.map(toCreature), [runLocations])
   const [arrivedId, setArrivedId] = useState<string | null>(null)
   const [collected, setCollected] = useState<string[]>([])
   const [hintLevel, setHintLevel] = useState<1 | 2 | 3>(1)
@@ -56,9 +66,23 @@ export default function App() {
   const [teleportMode, setTeleportMode] = useState(false)
   const { fix, status, offCampus, heading, injectFix, resumeGps } = usePlayerPosition({ stops, relaxAccuracy: DEBUG, enabled: launching || startedAt !== null })
 
+  const gpsFailed = status === 'denied' || status === 'unavailable'
+  useEffect(() => {
+    if (runLocations.length > 0 || !(launching || startedAt !== null)) return
+    const choose = (from: LngLat | null) => {
+      const picked = pickRun(ALL_LOCATIONS, from, CONFIG.stopsPerRun)
+      setRunLocations(picked)
+      setStartPos(from)
+      setRunCreatureIds(picked.map((l) => l.creatureId))
+    }
+    if (fix) return choose(fix.pos)
+    if (gpsFailed) return choose(null)
+    const t = setTimeout(() => choose(null), CONFIG.mapStartWaitMs + 2000)
+    return () => clearTimeout(t)
+  }, [runLocations, launching, startedAt, fix, gpsFailed])
+
   // The first mission is the nearest stop. After that each next stop is picked at random from the rest.
   const [targetId, setTargetId] = useState<string | null>(null)
-  const gpsFailed = status === 'denied' || status === 'unavailable'
   useEffect(() => {
     const left = stops.filter((s) => !collected.includes(s.id) && s.coords)
     if (left.length === 0) return setTargetId(null)
@@ -74,10 +98,13 @@ export default function App() {
   const banner = STATUS_TEXT[status] ?? (offCampus ? 'Walk mode works on UB North Campus.' : null)
   const toTarget = fix && target?.coords ? distanceM(fix.pos, target.coords) : null
 
-  // The stopwatch pauses while the player is doing the quiz and reading the facts.
-  const [pause, setPause] = useState<{ at: number | null; total: number }>({ at: null, total: 0 })
-  const resumeClock = () => setPause((p) => (p.at === null ? p : { at: null, total: p.total + (Date.now() - p.at) }))
-  const elapsedMs = runStartedAt ? Math.max(0, (pause.at ?? now) - runStartedAt - pause.total) : 0
+  // The stopwatch runs from the start of the run until the last creature is found. It never pauses
+  // (not during quizzes or fact sheets) and never restarts.
+  const [finishedAt, setFinishedAt] = useState<number | null>(null)
+  useEffect(() => {
+    if (finishedAt === null && stops.length > 0 && collected.length >= stops.length) setFinishedAt(Date.now())
+  }, [collected, stops, finishedAt])
+  const elapsedMs = runStartedAt ? Math.max(0, (finishedAt ?? now) - runStartedAt) : 0
 
   // Arrival flow: reach a stop -> quiz (CatchScreen) -> facts (PlaceLearnedSheet) -> next stop.
   // catchResult is null while the quiz is open, then holds the result while the facts sheet is open.
@@ -86,14 +113,14 @@ export default function App() {
     if (arrivedId || collected.includes(stopId)) return
     setArrivedId(stopId)
     setCatchResult(null)
-    setPause((p) => (p.at === null ? { ...p, at: Date.now() } : p))
   }
   // Tapping "Tap to unlock" (only shown within creatureCatchM) starts the quiz for that stop.
   const unlockCreature = (creatureId: string) => {
     const creature = creatures.find((c) => c.id === creatureId)
     if (creature) arrive(creature.stopId)
   }
-  const finishCatch = (result: CatchResult) => {
+  const finishCatch = (result: CatchResult, correct: number) => {
+    if (arrivedStop) setResults((r) => [...r.filter((x) => x.stopId !== arrivedStop.id), { stopId: arrivedStop.id, creatureId: arrivedStop.creatureId, correct, caught: result !== 'escaped' }])
     // Wrong answers: the creature is not added to the Dex, but the stop still counts.
     if (result !== 'escaped' && arrivedStop) recordCatch(arrivedStop.creatureId, result)
     setCatchResult(result)
@@ -102,7 +129,6 @@ export default function App() {
     if (arrivedId) setCollected((c) => (c.includes(arrivedId) ? c : [...c, arrivedId]))
     setArrivedId(null)
     setCatchResult(null)
-    resumeClock()
   }
   const arrivedStop = stops.find((s) => s.id === arrivedId) ?? null
   const arrivedCreature = arrivedStop ? ROSTER.find((c) => c.id === arrivedStop.creatureId) ?? null : null
@@ -140,7 +166,7 @@ export default function App() {
             character={getCharacter(characterId)}
             freeCamera={DEBUG}
             onIntroDone={() => {
-              setRunStartedAt(Date.now())
+              setRunStartedAt((t) => t ?? Date.now()) // set once, never reset
               setNow(Date.now())
             }}
             gpsFailed={gpsFailed}
@@ -184,6 +210,17 @@ export default function App() {
           {/* Radar distance dial, bottom-left corner. */}
           <DistanceDial targetName={target?.name ?? null} creatureId={target?.creatureId ?? null} distanceM={toTarget} hintLevel={hintLevel} player={fix?.pos ?? null} targetPos={target?.coords ?? null} bottomPx={RADAR_BOTTOM} />
 
+          {finishedAt !== null && !arrivedId && results.length > 0 && (
+            <EndScreen
+              score={scoreRun(results, elapsedMs, parMsFor([...(startPos ? [startPos] : []), ...results.map((r) => stops.find((s) => s.id === r.stopId)?.coords).filter((c): c is LngLat => !!c)], stops.length))}
+              creatures={results.map((r) => {
+                const info = ROSTER.find((c) => c.id === r.creatureId)
+                return { id: r.creatureId, name: info?.name ?? r.creatureId, placeName: info?.stopName ?? '', caught: r.caught }
+              })}
+              onPlayAgain={() => window.location.reload()}
+            />
+          )}
+
           <div className="absolute inset-x-0 bottom-[10rem] z-10 flex flex-col gap-2 p-4 pt-0">
             {DEBUG && (
               <div className="flex gap-2">
@@ -200,7 +237,8 @@ export default function App() {
                   resetDex()
                   setArrivedId(null)
                   setCatchResult(null)
-                  resumeClock()
+                  setFinishedAt(null)
+                  setResults([])
                 }} className="min-h-11 rounded-xl border border-white/15 bg-[#0b1b33] px-3 text-xs font-semibold">
                   Reset
                 </button>

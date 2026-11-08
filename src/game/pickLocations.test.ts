@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { pickRandom } from './pickLocations'
+import { pickRandom, pickRun } from './pickLocations'
 import { ALL_LOCATIONS } from './locations'
 
 describe('pickRandom', () => {
@@ -35,5 +35,24 @@ describe('location data', () => {
       expect(lat).toBeGreaterThan(42.9)
       expect(lat).toBeLessThan(43.1)
     })
+  })
+})
+
+describe('pickRun', () => {
+  const spots = ALL_LOCATIONS
+  const here = spots[2].coords
+  it('puts the nearest location first and fills the rest from the others', () => {
+    const run = pickRun(spots, [here[0] + 0.00001, here[1]], 5)
+    expect(run).toHaveLength(5)
+    expect(run[0]).toBe(spots[2])
+    expect(new Set(run.map((l) => l.id)).size).toBe(5)
+  })
+  it('is random when there is no position', () => {
+    expect(pickRun(spots, null, 5)).toHaveLength(5)
+  })
+  it('gives different rest-of-run picks across runs', () => {
+    const seen = new Set<string>()
+    for (let i = 0; i < 100; i++) pickRun(spots, here, 5).slice(1).forEach((l) => seen.add(l.id))
+    expect(seen.size).toBe(spots.length - 1)
   })
 })
