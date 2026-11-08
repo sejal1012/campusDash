@@ -1,5 +1,5 @@
 // The 8 creatures, which stop each one lives at, and what they "say".
-// Stop assignments for emberbun, splashdrake and snoutfin are a first guess: TODO confirm with the team.
+// Stop assignments match src/data/locations.json (the game's source of truth).
 
 export interface CreatureInfo {
   id: string
@@ -42,8 +42,8 @@ export const ROSTER: CreatureInfo[] = [
   {
     id: 'snoutfin',
     name: 'Snoutfin',
-    stopId: 'student-union',
-    stopName: 'Student Union',
+    stopId: 'clemens',
+    stopName: 'Clemens Hall',
     sounds: ['Oink!', 'Chomp!', 'Snrk!'],
     lines: ['I am a snack shark.', 'Sharks do not oink. I am special.', 'Is the food court open yet?'],
   },
@@ -66,16 +66,16 @@ export const ROSTER: CreatureInfo[] = [
   {
     id: 'meowxolotl',
     name: 'Meowxolotl',
-    stopId: 'nsc',
-    stopName: 'Natural Sciences Complex',
+    stopId: 'student-union',
+    stopName: 'Student Union',
     sounds: ['Meow!', 'Blub!', 'Mrrp?'],
     lines: ['Half cat, half fish, all nap.', 'Is this lab coat in my size?', 'I am 90 percent water and 10 percent attitude.'],
   },
   {
     id: 'splashdrake',
     name: 'Splashdrake',
-    stopId: 'clemens',
-    stopName: 'Clemens Hall',
+    stopId: 'nsc',
+    stopName: 'Natural Sciences Complex',
     sounds: ['Splash!', 'Rawr!', 'Blorp!'],
     lines: ['I sneeze rain.', 'Bring a towel. Trust me.', 'Small dragon. Big puddle.'],
   },

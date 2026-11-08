@@ -36,7 +36,7 @@ export function DexStrip() {
                 id={c.id}
                 name={c.name}
                 size={36}
-                look={entry === 'gold' ? 'gold' : entry ? 'color' : 'gray'}
+                look={entry ? 'color' : 'gray'}
                 className="h-auto max-h-9 w-full max-w-9 object-contain"
               />
             </li>
@@ -53,19 +53,21 @@ interface MissionProps {
   /** e.g. "Davis Hall". Null when the run is done. */
   targetName: string | null
   elapsedMs: number
+  /** True only when every stop is collected. No target alone can also mean "still waiting for GPS". */
+  allFound: boolean
 }
 
 /** "Stop 2 of 8 / Get to Davis Hall", stopwatch on the right, progress bars. */
-export function MissionCard({ stopNumber, stopCount, targetName, elapsedMs }: MissionProps) {
+export function MissionCard({ stopNumber, stopCount, targetName, elapsedMs, allFound }: MissionProps) {
   return (
     <div className={`rounded-[22px] px-4 py-3 ${card}`}>
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <div className="text-xs font-medium uppercase tracking-wider text-[#b9c6dc]">
-            {targetName ? `Stop ${stopNumber} of ${stopCount}` : 'Run complete'}
+            {allFound ? 'Run complete' : `Stop ${stopNumber} of ${stopCount}`}
           </div>
           <div className="mt-0.5 text-xl font-bold leading-tight text-white" style={heading}>
-            {targetName ? `Get to ${targetName}` : 'All stops collected'}
+            {allFound ? 'All stops collected' : targetName ? `Get to ${targetName}` : 'Finding your first stop…'}
           </div>
         </div>
         <div className="shrink-0 text-[26px] font-bold leading-none text-[#ffb02e]" style={heading} aria-label="Walking time">
@@ -84,7 +86,7 @@ export function MissionCard({ stopNumber, stopCount, targetName, elapsedMs }: Mi
 }
 
 interface BottomBarProps {
-  targetName: string | null
+  allFound: boolean
   distanceM: number | null
   hintLevel: 1 | 2 | 3
   player: LngLat | null
@@ -97,7 +99,7 @@ interface BottomBarProps {
  * On phones (not desktop) the unlocked creatures play faintly behind the text.
  * Does not block map touches.
  */
-export function BottomBar({ targetName, distanceM, hintLevel, player, targetPos }: BottomBarProps) {
+export function BottomBar({ allFound, distanceM, hintLevel, player, targetPos }: BottomBarProps) {
   const dex = useDex()
   const caught = ROSTER.filter((c) => dex[c.id])
   const showArrow = hintLevel === 2 && player && targetPos && distanceM !== null
@@ -106,12 +108,12 @@ export function BottomBar({ targetName, distanceM, hintLevel, player, targetPos 
       {caught.length > 0 && (
         <div className="absolute inset-x-3 inset-y-1.5 lg:hidden" aria-hidden="true">
           {caught.map((c) => (
-            <Roamer key={c.id} creature={c} gold={dex[c.id] === 'gold'} size={44} ghost />
+            <Roamer key={c.id} creature={c} size={44} ghost />
           ))}
         </div>
       )}
       <div className="relative z-[200] flex h-full flex-col items-center justify-center text-center" aria-live="polite">
-        {targetName === null ? (
+        {allFound ? (
           <div className="text-lg font-bold text-[#3ddc97]" style={heading}>All creatures found!</div>
         ) : distanceM === null ? (
           <div className="text-sm text-white/60">{hintLevel === 3 ? 'Find it by name' : 'Finding you…'}</div>

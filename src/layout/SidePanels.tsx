@@ -30,7 +30,6 @@ function Backdrop() {
 export function SidePanels() {
   const dex = useDex()
   const caught = ROSTER.filter((c) => dex[c.id])
-  const golds = caught.filter((c) => dex[c.id] === 'gold').length
 
   const column = 'absolute inset-y-0 flex w-[calc(50%-239px)] flex-col p-8'
 
@@ -61,7 +60,6 @@ export function SidePanels() {
           <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-white/10">
             <div className="h-full rounded-full bg-[#3ddc97] transition-[width] duration-700" style={{ width: `${(caught.length / ROSTER.length) * 100}%` }} />
           </div>
-          {golds > 0 && <div className="mt-2 text-xs font-semibold text-[#ffb02e]">{golds} gold</div>}
 
           <h3 className="mt-4 text-[11px] font-semibold uppercase tracking-wider text-[#b9c6dc]">
             {caught.length === ROSTER.length ? 'You found them all!' : 'Your creatures'}
@@ -71,7 +69,7 @@ export function SidePanels() {
               const entry = dex[c.id]
               return (
                 <li key={c.id} className="flex flex-col items-center rounded-2xl bg-white/5 p-1.5" title={entry ? c.name : 'Not found yet'}>
-                  <CreatureArt id={c.id} name={c.name} size={52} look={entry === 'gold' ? 'gold' : entry ? 'color' : 'gray'} className="h-auto w-full transition-[filter,opacity] duration-700" />
+                  <CreatureArt id={c.id} name={c.name} size={52} look={entry ? 'color' : 'gray'} className="h-auto w-full transition-[filter,opacity] duration-700" />
                   <span className={`text-[10px] font-semibold ${entry ? 'text-white' : 'text-white/40'}`}>{entry ? c.name : '???'}</span>
                 </li>
               )
@@ -86,7 +84,7 @@ export function SidePanels() {
         <h2 className="font-display text-xl font-bold">Creature park</h2>
         <p className="mt-1 text-sm text-[#b9c6dc]">Creatures you catch hang out here.</p>
         <div className="relative mt-6 flex-1" aria-hidden="true">
-          {caught.map((c) => <Roamer key={c.id} creature={c} gold={dex[c.id] === 'gold'} />)}
+          {caught.map((c) => <Roamer key={c.id} creature={c} />)}
           {caught.length === 0 && (
             <div className="absolute inset-x-0 top-1/3 rounded-3xl border-2 border-dashed border-white/10 p-6 text-center text-sm text-white/40">
               Nobody here yet. Catch your first creature!

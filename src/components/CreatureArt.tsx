@@ -1,11 +1,10 @@
 import { creatureArt } from '../data/roster'
 
-/** color = normal, gold = shiny variant, gray = not caught yet (side panel), silhouette = locked Dex slot. */
-export type ArtLook = 'color' | 'gold' | 'gray' | 'silhouette'
+/** color = normal, gray = not caught yet (side panel), silhouette = locked Dex slot. */
+export type ArtLook = 'color' | 'gray' | 'silhouette'
 
 const LOOK: Record<ArtLook, { filter?: string; opacity?: number }> = {
   color: {},
-  gold: { filter: 'sepia(1) saturate(4) hue-rotate(-12deg) brightness(1.1) drop-shadow(0 0 10px #ffd34d)' },
   gray: { filter: 'grayscale(1) brightness(0.9)', opacity: 0.55 },
   silhouette: { filter: 'brightness(0)', opacity: 0.35 },
 }
