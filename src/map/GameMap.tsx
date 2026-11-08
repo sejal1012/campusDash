@@ -23,22 +23,45 @@ export interface GameMapProps {
   heading?: number | null
   /** Debug only: remove the campus bounds so you can test real GPS anywhere. */
   freeCamera?: boolean
+  /** True once GPS has failed (denied/unavailable): stop waiting and open on campus. */
+  gpsFailed?: boolean
 }
 
 const TOKEN = import.meta.env.VITE_MAPBOX_TOKEN as string | undefined
 
 /** Presentational map: no store, no game logic. */
-export function GameMap({ player, stops, creatures, collectedIds, targetId, hintLevel, onCreatureTap, onMapTap, bottomInsetPx = 96, heading = null, freeCamera = false }: GameMapProps) {
+export function GameMap({ player, stops, creatures, collectedIds, targetId, hintLevel, onCreatureTap, onMapTap, bottomInsetPx = 96, heading = null, freeCamera = false, gpsFailed = false }: GameMapProps) {
   const mapRef = useRef<MapRef>(null)
   const [following, setFollowing] = useState(true)
   const playerPos = player?.pos ?? null
 
-  // Camera follows the player until the user drags the map away.
+  // Camera follows the avatar frame by frame (as it glides) until the user drags the map away.
+  const followingRef = useRef(following)
   useEffect(() => {
-    if (following && playerPos) {
-      mapRef.current?.easeTo({ center: playerPos, duration: 800 })
-    }
-  }, [playerPos, following])
+    followingRef.current = following
+  }, [following])
+  const followAvatar = useCallback((pos: LngLat) => {
+    if (followingRef.current) mapRef.current?.jumpTo({ center: pos })
+  }, [])
+
+  // Open the map on the player's first fix. Wait up to mapStartWaitMs; then (or if GPS fails) open on campus.
+  const [startPos, setStartPos] = useState<LngLat | null>(null)
+  const [waitedOut, setWaitedOut] = useState(false)
+  useEffect(() => {
+    const t = setTimeout(() => setWaitedOut(true), CONFIG.mapStartWaitMs)
+    return () => clearTimeout(t)
+  }, [])
+  if (!startPos && playerPos) setStartPos(playerPos)
+  const ready = startPos !== null || waitedOut || gpsFailed
+  const initialCenter = startPos ?? MAP_CONFIG.center
+
+  // If the map opened on campus before the first fix, move to the player once it arrives.
+  const hasFix = playerPos !== null
+  useEffect(() => {
+    if (hasFix && followingRef.current && playerPos) mapRef.current?.jumpTo({ center: playerPos })
+    // Only on the first fix; after that the glide drives the camera.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hasFix])
 
   const styled = useRef(false)
   // Runs once, as soon as the style is ready (not after every tile), so the plain map never shows.
@@ -87,13 +110,22 @@ export function GameMap({ player, stops, creatures, collectedIds, targetId, hint
     )
   }
 
+  if (!ready) {
+    return (
+      <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-[#0b1b33] text-[#b9c6dc]">
+        <div className="h-10 w-10 animate-spin rounded-full border-4 border-white/15 border-t-[#3ddc97]" aria-hidden="true" />
+        <p className="text-sm font-medium">Finding you…</p>
+      </div>
+    )
+  }
+
   return (
     <div className="absolute inset-0">
       <Map
         ref={mapRef}
         mapboxAccessToken={TOKEN}
         mapStyle={MAP_CONFIG.style}
-        initialViewState={{ longitude: MAP_CONFIG.center[0], latitude: MAP_CONFIG.center[1], zoom: MAP_CONFIG.zoom, pitch: MAP_CONFIG.pitch, bearing: 0 }}
+        initialViewState={{ longitude: initialCenter[0], latitude: initialCenter[1], zoom: MAP_CONFIG.zoom, pitch: MAP_CONFIG.pitch, bearing: 0 }}
         minZoom={freeCamera ? 3 : MAP_CONFIG.minZoom}
         maxZoom={MAP_CONFIG.maxZoom}
         maxPitch={70}
@@ -113,7 +145,7 @@ export function GameMap({ player, stops, creatures, collectedIds, targetId, hint
         )}
         <StopPins stops={stops} collectedIds={collectedIds} targetId={targetId} hintLevel={hintLevel} />
         <CreatureMarkers creatures={creatures} player={playerPos} onCreatureTap={onCreatureTap} />
-        {playerPos && <PlayerMarker pos={playerPos} heading={heading} />}
+        {playerPos && <PlayerMarker pos={playerPos} heading={heading} onFrame={followAvatar} />}
       </Map>
 
       {/* Navy haze over the horizon. No backdrop-filter. */}
