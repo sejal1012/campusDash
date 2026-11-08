@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
+  facingOnScreen,
   averageFixes,
   bearingDeg,
   circleRing,
@@ -118,5 +119,24 @@ describe('nextHeading', () => {
   })
   it('has no heading on the very first fix', () => {
     expect(nextHeading(null, A, null).heading).toBeNull()
+  })
+})
+
+describe('facingOnScreen', () => {
+  it('faces the viewer with no heading', () => {
+    expect(facingOnScreen(null)).toBe('front')
+  })
+  it('maps compass quadrants on a north-up map', () => {
+    expect(facingOnScreen(0)).toBe('back')
+    expect(facingOnScreen(90)).toBe('right')
+    expect(facingOnScreen(180)).toBe('front')
+    expect(facingOnScreen(270)).toBe('left')
+    expect(facingOnScreen(359)).toBe('back')
+  })
+  it('accounts for map rotation', () => {
+    // Walking east on a map rotated 90deg (east is up) means walking away from the viewer.
+    expect(facingOnScreen(90, 90)).toBe('back')
+    expect(facingOnScreen(0, 90)).toBe('left')
+    expect(facingOnScreen(10, -350)).toBe('back')
   })
 })

@@ -163,38 +163,41 @@ body {
   [class*='anim-'], .spark, .speech-bubble { animation-duration: 1ms !important; animation-iteration-count: 1 !important; }
 }
 
-/* Player walk cycle: legs swing from the hip, body bobs twice per cycle (once per step). */
-.player-walking .p-leg-a,
-.player-walking .p-leg-b,
-.player-walking .p-upper,
-.player-walking .p-pack,
-.player-walking .p-shadow {
-  transform-box: fill-box;
-  animation-duration: 0.5s;
-  animation-iteration-count: infinite;
-  animation-timing-function: ease-in-out;
+/* Player sprite (UBMon). 56px frame; feet sit 6/128 of the frame above its bottom edge. */
+.player-sprite {
+  position: relative;
+  width: 56px;
+  height: 56px;
 }
-.player-walking .p-leg-a { transform-origin: 50% 0; animation-name: p-leg-swing; }
-.player-walking .p-leg-b { transform-origin: 50% 0; animation-name: p-leg-swing; animation-direction: reverse; }
-.player-walking .p-upper { animation-name: p-bob; animation-duration: 0.25s; animation-direction: alternate; }
-.player-walking .p-pack { transform-origin: 50% 0; animation-name: p-pack-sway; }
-.player-walking .p-shadow { transform-origin: 50% 50%; animation-name: p-shadow-pulse; animation-duration: 0.25s; animation-direction: alternate; }
-@keyframes p-leg-swing {
-  0%, 100% { transform: rotate(22deg); }
-  50% { transform: rotate(-22deg); }
+.player-ring {
+  position: absolute;
+  left: 50%;
+  bottom: 0;
+  width: 34px;
+  height: 11px;
+  transform: translateX(-50%);
+  border: 2px solid #3ddc97;
+  border-radius: 50%;
+  background: radial-gradient(closest-side, rgba(0, 0, 0, 0.3), rgba(0, 0, 0, 0.12));
 }
-@keyframes p-bob {
-  from { transform: translateY(0); }
-  to { transform: translateY(-1.6px); }
+.player-frame {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  filter: drop-shadow(0 2px 2px rgba(0, 20, 60, 0.35));
 }
-@keyframes p-pack-sway {
-  0%, 100% { transform: rotate(-5deg); }
-  50% { transform: rotate(5deg); }
+.player-idle { display: block; width: 100%; height: 100%; }
+.player-strip {
+  display: block;
+  height: 100%;
+  max-width: none;
+  /* 6 frames across: translate by the whole strip in 6 jumps, ~9 frames per second. */
+  animation: player-walk 0.66s steps(6) infinite;
 }
-@keyframes p-shadow-pulse {
-  from { transform: scaleX(1); }
-  to { transform: scaleX(0.88); }
+@keyframes player-walk {
+  from { transform: translateX(0); }
+  to { transform: translateX(-100%); }
 }
 @media (prefers-reduced-motion: reduce) {
-  .player-walking * { animation: none !important; }
+  .player-strip { animation: none; }
 }
