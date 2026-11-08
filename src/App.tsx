@@ -54,6 +54,7 @@ export default function App() {
             bottomInsetPx={112}
             heading={heading}
             freeCamera={DEBUG}
+            gpsFailed={status === 'denied' || status === 'unavailable'}
           />
 
           {/* Top HUD */}

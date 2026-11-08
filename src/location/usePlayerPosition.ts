@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { GpsStatus, LngLat, PlayerFix, Stop } from '../types'
+import { CONFIG } from '../config'
 import { isGoodAccuracy, isOffCampus, nextHeading, smooth } from './geo'
 
 interface Options {
@@ -77,26 +78,51 @@ export function usePlayerPosition({ onFix, stops, enabled = true, relaxAccuracy 
       setStatus('unavailable')
       return
     }
-    const id = navigator.geolocation.watchPosition(
-      ({ coords, timestamp }) => {
-        if (teleported.current) return
-        if (!relaxAccuracy && !isGoodAccuracy(coords.accuracy)) {
-          setStatus('weak')
-          return
-        }
-        const raw: LngLat = [coords.longitude, coords.latitude]
-        const pos = smooth(lastPos.current, raw)
-        lastPos.current = pos
-        publish({ pos, accuracy: coords.accuracy, timestamp })
-      },
-      (err) => {
-        console.error('Geolocation error', err.code, err.message)
-        // 1 = permission denied, 2 = position unavailable, 3 = timeout
-        setStatus(err.code === 1 ? 'denied' : 'unavailable')
-      },
-      { enableHighAccuracy: true, maximumAge: 1000, timeout: 10000 },
-    )
-    return () => navigator.geolocation.clearWatch(id)
+    let lastTimestamp = 0
+    const onPosition = ({ coords, timestamp }: GeolocationPosition) => {
+      if (teleported.current) return
+      // The watch and the poll can deliver the same (or an older) reading. Use each one once.
+      if (timestamp <= lastTimestamp) return
+      lastTimestamp = timestamp
+      if (!relaxAccuracy && !isGoodAccuracy(coords.accuracy)) {
+        setStatus('weak')
+        return
+      }
+      const raw: LngLat = [coords.longitude, coords.latitude]
+      const pos = smooth(lastPos.current, raw)
+      lastPos.current = pos
+      publish({ pos, accuracy: coords.accuracy, timestamp })
+    }
+    const onError = (err: GeolocationPositionError) => {
+      console.error('Geolocation error', err.code, err.message)
+      // 1 = permission denied, 2 = position unavailable, 3 = timeout
+      if (err.code === 3) return // a slow single reading is not fatal; the next poll retries
+      setStatus(err.code === 1 ? 'denied' : 'unavailable')
+    }
+    const options: PositionOptions = { enableHighAccuracy: true, maximumAge: 0, timeout: 10000 }
+
+    // watchPosition only fires when the device decides the position changed, so also ask every second.
+    const id = navigator.geolocation.watchPosition(onPosition, onError, options)
+    let inFlight = false
+    const poll = setInterval(() => {
+      if (inFlight || document.visibilityState !== 'visible') return
+      inFlight = true
+      navigator.geolocation.getCurrentPosition(
+        (p) => {
+          inFlight = false
+          onPosition(p)
+        },
+        (err) => {
+          inFlight = false
+          onError(err)
+        },
+        options,
+      )
+    }, CONFIG.gpsPollMs)
+    return () => {
+      clearInterval(poll)
+      navigator.geolocation.clearWatch(id)
+    }
   }, [enabled, publish, relaxAccuracy])
 
   // Keep the screen on while watching. Re-acquire after the tab becomes visible.

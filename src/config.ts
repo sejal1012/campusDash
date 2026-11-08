@@ -4,7 +4,9 @@ export const CONFIG = {
   arrivalRadiusM: 30,
   arrivalFixesRequired: 2,
   maxAccuracyM: 50,
-  smoothingAlpha: 0.3,
+  smoothingAlpha: 0.6, // higher = dot follows GPS faster, lower = steadier
+  gpsPollMs: 1000,
+  mapStartWaitMs: 6000, // how long the map waits for a first fix before opening on campus
   creatureVisibleM: 150,
   creatureCatchM: 40,
   minHopM: 100,
