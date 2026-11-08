@@ -8,8 +8,6 @@ import { GameMap } from './map/GameMap'
 import { distanceM } from './location/geo'
 import { DexChip, HintCard, MissionCard } from './hud/Hud'
 import { AppShell } from './layout/AppShell'
-import { HamburgerButton } from './layout/HamburgerButton'
-import type { MenuTab } from './layout/MenuList'
 import { usePlayerPosition } from './location/usePlayerPosition'
 import type { Creature, Stop } from './types'
 
@@ -27,7 +25,6 @@ export default function App() {
   const [collected, setCollected] = useState<string[]>([])
   const [hintLevel, setHintLevel] = useState<1 | 2 | 3>(1)
   const [message, setMessage] = useState<string | null>(null)
-  const [tab, setTab] = useState<MenuTab>('Map')
   const startedAt = useRef(Date.now())
   const [now, setNow] = useState(Date.now())
   useEffect(() => {
@@ -43,9 +40,8 @@ export default function App() {
   const toTarget = fix && target?.coords ? distanceM(fix.pos, target.coords) : null
 
   return (
-    <AppShell active={tab} onSelect={setTab}>
-      {(openMenu) => (
-        <div className="relative h-full">
+    <AppShell>
+      <div className="relative h-full">
           <GameMap
             player={fix}
             stops={stops}
@@ -61,11 +57,8 @@ export default function App() {
 
           {/* Top HUD */}
           <div className="pointer-events-none absolute inset-x-0 top-0 z-10 flex flex-col gap-3 p-4 pt-[max(1rem,env(safe-area-inset-top))]">
-            <div className="flex items-center gap-2">
-              <HamburgerButton onClick={openMenu} />
-              <div className="pointer-events-auto">
-                <DexChip found={collected.length} total={stops.length} />
-              </div>
+            <div className="pointer-events-auto w-fit">
+              <DexChip found={collected.length} total={stops.length} />
             </div>
             <MissionCard
               stopNumber={Math.min(collected.length + 1, stops.length)}
@@ -102,8 +95,7 @@ export default function App() {
             )}
             <HintCard hintLevel={hintLevel} targetName={target?.name ?? null} distanceM={toTarget} player={fix?.pos ?? null} targetPos={target?.coords ?? null} />
           </div>
-        </div>
-      )}
+      </div>
     </AppShell>
   )
 }
