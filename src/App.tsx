@@ -2,7 +2,7 @@
 // Real screens and game logic live elsewhere (see CLAUDE.md section 5).
 import { useEffect, useMemo, useState } from 'react'
 import { ALL_LOCATIONS, toCreature, toStop } from './game/locations'
-import { CONFIG } from './config'
+import { pickRandom } from './game/pickLocations'
 import { DebugOverlay } from './map/DebugOverlay'
 import { GameMap } from './map/GameMap'
 import { distanceM } from './location/geo'
@@ -26,7 +26,6 @@ export default function App() {
   const [arrivedId, setArrivedId] = useState<string | null>(null)
   const [collected, setCollected] = useState<string[]>([])
   const [hintLevel, setHintLevel] = useState<1 | 2 | 3>(1)
-  const [message, setMessage] = useState<string | null>(null)
   // Null until the player taps Start. The stopwatch and GPS only run after that.
   const [startedAt, setStartedAt] = useState<number | null>(null)
   const [now, setNow] = useState(Date.now())
@@ -38,33 +37,31 @@ export default function App() {
   const [teleportMode, setTeleportMode] = useState(false)
   const { fix, status, offCampus, heading, injectFix, resumeGps } = usePlayerPosition({ stops, relaxAccuracy: DEBUG, enabled: startedAt !== null })
 
-  // The mission points at the nearest stop you have not found yet. It only switches when another
-  // stop is clearly closer (30 m), so the text does not flicker while you walk.
+  // The first mission is the nearest stop. After that each next stop is picked at random from the rest.
   const [targetId, setTargetId] = useState<string | null>(null)
+  const gpsFailed = status === 'denied' || status === 'unavailable'
   useEffect(() => {
     const left = stops.filter((s) => !collected.includes(s.id) && s.coords)
     if (left.length === 0) return setTargetId(null)
-    if (!fix) return setTargetId((cur) => (cur && left.some((s) => s.id === cur) ? cur : left[0].id))
-    const dist = (s: (typeof left)[number]) => distanceM(fix.pos, s.coords!)
-    const nearest = left.reduce((a, b) => (dist(b) < dist(a) ? b : a))
-    setTargetId((cur) => {
-      const current = left.find((s) => s.id === cur)
-      return current && dist(current) - dist(nearest) <= 30 ? current.id : nearest.id
-    })
-  }, [fix, stops, collected])
+    if (targetId && left.some((s) => s.id === targetId)) return
+    if (collected.length === 0) {
+      if (fix) setTargetId(left.reduce((a, b) => (distanceM(fix.pos, b.coords!) < distanceM(fix.pos, a.coords!) ? b : a)).id)
+      else if (gpsFailed) setTargetId(pickRandom(left, 1)[0].id)
+      return
+    }
+    setTargetId(pickRandom(left, 1)[0].id)
+  }, [fix, stops, collected, targetId, gpsFailed])
   const target = useMemo(() => stops.find((s) => s.id === targetId) ?? null, [stops, targetId])
   const banner = STATUS_TEXT[status] ?? (offCampus ? 'Walk mode works on UB North Campus.' : null)
   const toTarget = fix && target?.coords ? distanceM(fix.pos, target.coords) : null
 
-  // Reaching any not-yet-found stop (within arrivalRadiusM) unlocks it and plays the celebration.
-  useEffect(() => {
-    if (!fix || arrivedId) return
-    const hit = stops.find((st) => !collected.includes(st.id) && st.coords && distanceM(fix.pos, st.coords) <= CONFIG.arrivalRadiusM)
-    if (hit) {
-      setCollected((c) => [...c, hit.id])
-      setArrivedId(hit.id)
-    }
-  }, [fix, stops, collected, arrivedId])
+  // Tapping "Tap to unlock" (only shown within creatureCatchM) unlocks the stop and plays the celebration.
+  const unlockCreature = (creatureId: string) => {
+    const creature = creatures.find((c) => c.id === creatureId)
+    if (!creature || collected.includes(creature.stopId)) return
+    setCollected((c) => [...c, creature.stopId])
+    setArrivedId(creature.stopId)
+  }
   const arrivedStop = stops.find((s) => s.id === arrivedId) ?? null
 
   if (startedAt === null) {
@@ -87,12 +84,12 @@ export default function App() {
             player={fix}
             creatures={creatures}
             collectedIds={collected}
-            onCreatureTap={(id) => setMessage(`Tapped creature ${id} (demo only)`)}
+            onCreatureTap={unlockCreature}
             onMapTap={DEBUG && teleportMode ? (pos) => injectFix(pos) : undefined}
             bottomInsetPx={112}
             heading={heading}
             freeCamera={DEBUG}
-            gpsFailed={status === 'denied' || status === 'unavailable'}
+            gpsFailed={gpsFailed}
           />
 
           {/* Top HUD */}
@@ -107,7 +104,6 @@ export default function App() {
               elapsedMs={Math.max(0, now - startedAt)}
             />
             {banner && <div className="rounded-2xl bg-[#ffb02e] px-4 py-2 text-sm font-semibold text-[#0b1b33]">{banner}</div>}
-            {message && <div className="rounded-2xl bg-[#005bbb] px-4 py-2 text-sm">{message}</div>}
           </div>
 
           {arrivedStop && (
